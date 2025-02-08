@@ -1,1423 +1,318 @@
-import React from 'react'
-import ImageWithBasePath from '../../../../core/img/ImageWithBasePath'
+import React, { useState, useEffect } from 'react';
+import ImageWithBasePath from '../../../../core/img/ImageWithBasePath';
 import { Link } from 'react-router-dom';
 import { all_routes } from '../../../../core/data/routes/all_routes';
-const routes = all_routes;
+import { serviceApi } from '../../../../core/service/serviceApi';
+import { toast } from 'react-toastify';
+import { Modal, Button } from 'react-bootstrap';
+
+interface ServiceType {
+  id: number;
+  title: string;
+  description: string;
+  price: number;
+  priceType: string;
+  city: string;
+  state: string;
+  category: {
+    name: string;
+  };
+  serviceImages: Array<{
+    imageUrl: string;
+  }>;
+  rating?: number;
+}
 
 const ProviderServices = () => {
-  return (
-    <>
-  {/* Page Wrapper */}
-  <div className="page-wrapper">
-    <div className="content container-fluid">
-      <div className="row">
-        <div className="d-flex justify-content-between align-items-center flex-wrap mb-4">
-          <h5>My Services</h5>
-          <div className="d-flex align-items-center">
-            <span className="fs-14 me-2">Sort</span>
-            <div className="dropdown me-2">
-              <Link
-                to="#"
-                className="dropdown-toggle bg-light-300 "
-                data-bs-toggle="dropdown"
-              >
-                Newly Added
+  const [services, setServices] = useState<ServiceType[]>([]);
+  const [activeTab, setActiveTab] = useState('active');
+  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'a-z' | 'z-a'>('newest');
+  const [loading, setLoading] = useState(true);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showStatusModal, setShowStatusModal] = useState(false);
+  const [selectedService, setSelectedService] = useState<ServiceType | null>(null);
+  const [targetStatus, setTargetStatus] = useState<'active' | 'inactive' | null>(null);
+  const routes = all_routes;
+
+  useEffect(() => {
+    fetchServices();
+  }, [activeTab, sortBy]);
+
+  const fetchServices = async () => {
+    try {
+      setLoading(true);
+      const response = await serviceApi.getMyServices({
+        isActive: activeTab === 'active',
+        sortBy
+      });
+      setServices(response.data || []);
+    } catch (error) {
+      toast.error('Failed to fetch services');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleStatusChange = async () => {
+    if (!selectedService) return;
+    
+    try {
+      await serviceApi.updateService(selectedService.id, {
+        isActive: targetStatus === 'active'
+      });
+      toast.success(`Service ${targetStatus === 'active' ? 'activated' : 'deactivated'} successfully`);
+      setShowStatusModal(false);
+      fetchServices();
+    } catch (error) {
+      toast.error('Failed to update service status');
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!selectedService) return;
+
+    try {
+      await serviceApi.deleteService(selectedService.id);
+      toast.success('Service deleted successfully');
+      setShowDeleteModal(false);
+      fetchServices();
+    } catch (error) {
+      toast.error('Failed to delete service');
+    }
+  };
+
+  const renderServiceCard = (service: ServiceType) => (
+    <div key={service.id} className="col-xl-4 col-md-6">
+      <div className="card p-0">
+        <div className="card-body p-0">
+          <div className="img-sec w-100">
+            <Link to={`\${routes.serviceDetails1}?id=\${service.id}`}>
+              {service.serviceImages?.[0]?.imageUrl ? (
+                <img
+                  src={service.serviceImages[0].imageUrl}
+                  className="img-fluid rounded-top w-100"
+                  alt={service.title}
+                />
+              ) : (
+                <ImageWithBasePath
+                  src="assets/img/services/default.jpg"
+                  className="img-fluid rounded-top w-100"
+                  alt={service.title}
+                />
+              )}
+            </Link>
+            <div className="image-tag d-flex justify-content-end align-items-center">
+              <span className="trend-tag">{service.category?.name}</span>
+              {service.rating && (
+                <span className="trend-tag-2 d-flex justify-content-center align-items-center rating text-gray">
+                  <i className="fa fa-star filled me-1" />
+                  {service.rating?.toFixed(1)}
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="p-3">
+            <h5 className="mb-2 text-truncate">
+              <Link to={`${routes.serviceDetails1}?id=${service.id}`}>
+                {service.title}
               </Link>
-              <div className="dropdown-menu">
-                <Link to="#" className="dropdown-item active">
-                  Recently Added
-                </Link>
+            </h5>
+            <div className="d-flex justify-content-between align-items-center mb-3">
+              <p className="fs-14 mb-0">
+                <i className="ti ti-map-pin me-2" />
+                {service.city}, {service.state}
+              </p>
+              <h5>
+                {service.price} BGN
+                {service.priceType === 'HOURLY' && '/hr'}
+              </h5>
+            </div>
+            <div className="d-flex justify-content-between align-items-center">
+              <div className="d-flex gap-3">
+                {activeTab === 'active' ? (
+                  <>
+                    <Link to={`/services/edit/${service.id}`}>
+                      <i className="ti ti-edit me-2" />Edit
+                    </Link>
+                    <Link to="#" onClick={() => {
+                      setSelectedService(service);
+                      setTargetStatus('inactive');
+                      setShowStatusModal(true);
+                    }}>
+                      <i className="ti ti-info-circle me-2" />Inactive
+                    </Link>
+                  </>
+                ) : (
+                  <>
+                    <Link to="#" onClick={() => {
+                      setSelectedService(service);
+                      setShowDeleteModal(true);
+                    }}>
+                      <i className="ti ti-trash me-2" />Delete
+                    </Link>
+                    <Link to="#" onClick={() => {
+                      setSelectedService(service);
+                      setTargetStatus('active');
+                      setShowStatusModal(true);
+                    }}>
+                      <i className="ti ti-info-circle me-2" />Active
+                    </Link>
+                  </>
+                )}
               </div>
             </div>
-            <Link
-              to={routes.providerService}
-              className="tags active d-flex justify-content-center align-items-center  rounded me-2"
-            >
-              <i className="ti ti-layout-grid" />
-            </Link>
-            <Link
-              to={routes.providerServiceList}
-              className="tags d-flex justify-content-center align-items-center border rounded me-2"
-            >
-              <i className="ti ti-list" />
-            </Link>
-            <Link
-              to={routes.createService}
-              className="btn btn-dark d-flex align-items-center"
-            >
-              <i className="ti ti-circle-plus me-2" />
-              Add Services
-            </Link>
           </div>
         </div>
       </div>
-      <div className="row justify-content-center">
-        <div className="col-xl-12 col-lg-12">
-          <div className="tab-list mb-4" role="tablist">
-            <ul className="nav d-flex align-items-center">
-              <li>
-                <Link
-                  to="#"
-                  className="act-btn active me-3 p-2 rounded fs-14"
-                  data-bs-toggle="tab"
-                  data-bs-target="#active-service"
-                  role="tab"
-                  aria-controls="active-service"
-                  aria-selected="true"
-                  tabIndex={-1}
-                >
-                  Active Services
+    </div>
+  );
+
+  return (
+    <>
+      <div className="page-wrapper">
+        <div className="content container-fluid">
+          <div className="row">
+            <div className="d-flex justify-content-between align-items-center flex-wrap mb-4">
+              <h5>My Services</h5>
+              <div className="d-flex align-items-center">
+                <span className="fs-14 me-2">Sort</span>
+                  <div className="dropdown me-2">
+                    <button 
+                      className="btn btn-light dropdown-toggle"
+                      type="button"
+                      id="sortDropdown" 
+                      data-bs-toggle="dropdown"
+                      aria-expanded="false"
+                    >
+                      {sortBy === 'newest' && 'Newly Added'}
+                      {sortBy === 'oldest' && 'Oldest First'}
+                      {sortBy === 'a-z' && 'A to Z'}
+                      {sortBy === 'z-a' && 'Z to A'}
+                    </button>
+                    <ul className="dropdown-menu" aria-labelledby="sortDropdown">
+                      <li>
+                        <button 
+                          className={`dropdown-item ${sortBy === 'newest' ? 'active' : ''}`}
+                          onClick={() => setSortBy('newest')}
+                        >
+                          Recently Added
+                        </button>
+                      </li>
+                      <li>
+                        <button 
+                          className={`dropdown-item ${sortBy === 'oldest' ? 'active' : ''}`}
+                          onClick={() => setSortBy('oldest')}
+                        >
+                          Oldest First
+                        </button>
+                      </li>
+                      <li>
+                        <button 
+                          className={`dropdown-item ${sortBy === 'a-z' ? 'active' : ''}`}
+                          onClick={() => setSortBy('a-z')}
+                        >
+                          A to Z
+                        </button>
+                      </li>
+                      <li>
+                        <button 
+                          className={`dropdown-item ${sortBy === 'z-a' ? 'active' : ''}`}
+                          onClick={() => setSortBy('z-a')}
+                        >
+                          Z to A
+                        </button>
+                      </li>
+                    </ul>
+                  </div>
+                <Link to={routes.createService} className="btn btn-dark d-flex align-items-center">
+                  <i className="ti ti-circle-plus me-2" />Add Services
                 </Link>
-              </li>
-              <li>
-                <Link
-                  to="#"
-                  className="act-btn p-2 rounded fs-14"
-                  data-bs-toggle="tab"
-                  data-bs-target="#inactive-service"
-                  role="tab"
-                  aria-controls="inactive-service"
-                  aria-selected="false"
-                  tabIndex={-1}
-                >
-                  Inactive Services
-                </Link>
-              </li>
-            </ul>
-          </div>
-          <div className="tab-content pt-0">
-            <div
-              className="tab-pane active"
-              id="active-service"
-              role="tabpanel"
-              aria-labelledby="active-service"
-            >
-              <div className="row justify-content-center align-items-center">
-                <div className="col-xl-4 col-md-6">
-                  <div className="card p-0">
-                    <div className="card-body p-0">
-                      <div className="img-sec w-100">
-                        <Link to={routes.serviceDetails1}>
-                          <ImageWithBasePath
-                            src="assets/img/providers/provider-13.jpg"
-                            className="img-fluid rounded-top w-100"
-                            alt="img"
-                          />
-                        </Link>
-                        <div className="image-tag d-flex justify-content-end align-items-center">
-                          <span className="trend-tag">Car Wash</span>
-                          <span className="trend-tag-2  d-flex justify-content-center align-items-center rating text-gray">
-                            <i className="fa fa-star filled me-1" />
-                            4.9
-                          </span>
-                        </div>
-                      </div>
-                      <div className="p-3">
-                        <h5 className="mb-2 text-truncate">
-                          <Link to={routes.serviceDetails1}>Car Repair Service</Link>
-                        </h5>
-                        <div className="d-flex justify-content-between align-items-center mb-3">
-                          <p className="fs-14 mb-0">
-                            <i className="ti ti-map-pin me-2" />
-                            New Jersey, USA
-                          </p>
-                          <h5>
-                            $20.00{" "}
-                            <span className="fs-13 text-gray">
-                              <del>$25.00/hr</del>
-                            </span>
-                          </h5>
-                        </div>
-                        <div className="d-flex justify-content-between align-items-center">
-                          <div className="d-flex gap-3">
-                            <Link to="#">
-                              <i className="ti ti-edit me-2" />
-                              Edit
-                            </Link>
-                            <Link
-                              to="#"
-                              data-bs-toggle="modal"
-                              data-bs-target="#active"
-                            >
-                              <i className="ti ti-info-circle me-2" />
-                              Inactive
-                            </Link>
-                          </div>
-                          <Link
-                            to="#"
-                            className="btn bg-light"
-                          >
-                            Apply Offer
-                          </Link>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div className="col-xl-4 col-md-6">
-                  <div className="card p-0">
-                    <div className="card-body p-0">
-                      <div className="img-sec w-100">
-                        <Link to={routes.serviceDetails1}>
-                          <ImageWithBasePath
-                            src="assets/img/providers/provider-14.jpg"
-                            className="img-fluid rounded-top w-100"
-                            alt="img"
-                          />
-                        </Link>
-                        <div className="image-tag d-flex justify-content-end align-items-center">
-                          <span className="trend-tag">Construction</span>
-                          <span className="trend-tag-2  d-flex justify-content-center align-items-center rating text-gray">
-                            <i className="fa fa-star filled me-1" />
-                            4.9
-                          </span>
-                        </div>
-                      </div>
-                      <div className="p-3">
-                        <h5 className="mb-2 text-truncate">
-                          <Link to={routes.serviceDetails1}>
-                            Toughened Glass Fitting Services
-                          </Link>
-                        </h5>
-                        <div className="d-flex justify-content-between align-items-center mb-3">
-                          <p className="fs-14 mb-0">
-                            <i className="ti ti-map-pin me-2" />
-                            Chicago, USA
-                          </p>
-                          <h5>
-                            $15.00
-                            <span className="fs-13 text-gray">
-                              <del>$20.00/hr</del>
-                            </span>
-                          </h5>
-                        </div>
-                        <div className="d-flex justify-content-between align-items-center">
-                          <div className="d-flex gap-3">
-                            <Link to="#">
-                              <i className="ti ti-edit me-2" />
-                              Edit
-                            </Link>
-                            <Link
-                              to="#"
-                              data-bs-toggle="modal"
-                              data-bs-target="#active"
-                            >
-                              <i className="ti ti-info-circle me-2 " />
-                              Inactive
-                            </Link>
-                          </div>
-                          <Link
-                            to="#"
-                            className="btn bg-light"
-                          >
-                            Apply Offer
-                          </Link>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div className="col-xl-4 col-md-6">
-                  <div className="card p-0">
-                    <div className="card-body p-0">
-                      <div className="img-sec w-100">
-                        <Link to={routes.serviceDetails1}>
-                          <ImageWithBasePath
-                            src="assets/img/providers/provider-15.jpg"
-                            className="img-fluid rounded-top w-100"
-                            alt="img"
-                          />
-                        </Link>
-                        <div className="image-tag d-flex justify-content-end align-items-center">
-                          <span className="trend-tag">Computer</span>
-                          <span className="trend-tag-2  d-flex justify-content-center align-items-center rating text-gray">
-                            <i className="fa fa-star filled me-1" />
-                            4.9
-                          </span>
-                        </div>
-                      </div>
-                      <div className="p-3">
-                        <h5 className="mb-2 text-truncate">
-                          <Link to={routes.serviceDetails1}>
-                            Computer &amp; Server AMC Service
-                          </Link>
-                        </h5>
-                        <div className="d-flex justify-content-between align-items-center mb-3">
-                          <p className="fs-14 mb-0">
-                            <i className="ti ti-map-pin me-2" />
-                            Los Angeles, USA
-                          </p>
-                          <h5>
-                            $15.00{" "}
-                            <span className="fs-13 text-gray">
-                              <del>$20.00/hr</del>
-                            </span>
-                          </h5>
-                        </div>
-                        <div className="d-flex justify-content-between align-items-center">
-                          <div className="d-flex gap-3">
-                            <Link to="#">
-                              <i className="ti ti-edit me-2" />
-                              Edit
-                            </Link>
-                            <Link
-                              to="#"
-                              data-bs-toggle="modal"
-                              data-bs-target="#active"
-                            >
-                              <i className="ti ti-info-circle me-2" />
-                              Inactive
-                            </Link>
-                          </div>
-                          <Link
-                            to="#"
-                            className="btn bg-light "
-                          >
-                            Apply Offer
-                          </Link>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div className="col-xl-4 col-md-6">
-                  <div className="card p-0">
-                    <div className="card-body p-0">
-                      <div className="img-sec w-100">
-                        <Link to={routes.serviceDetails1}>
-                          <ImageWithBasePath
-                            src="assets/img/providers/provider-16.jpg"
-                            className="img-fluid rounded-top w-100"
-                            alt="img"
-                          />
-                        </Link>
-                        <div className="image-tag d-flex justify-content-end align-items-center">
-                          <span className="trend-tag">Interior</span>
-                          <span className="trend-tag-2  d-flex justify-content-center align-items-center rating text-gray">
-                            <i className="fa fa-star filled me-1" />
-                            4.9
-                          </span>
-                        </div>
-                      </div>
-                      <div className="p-3">
-                        <h5 className="mb-2 text-truncate">
-                          <Link to={routes.serviceDetails1}>Interior Designing</Link>
-                        </h5>
-                        <div className="d-flex justify-content-between align-items-center mb-3">
-                          <p className="fs-14 mb-0">
-                            <i className="ti ti-map-pin me-2" />
-                            Detroit, USA
-                          </p>
-                          <h5>
-                            $25.00{" "}
-                            <span className="fs-13 text-gray">
-                              <del>$30.00/hr</del>
-                            </span>
-                          </h5>
-                        </div>
-                        <div className="d-flex justify-content-between align-items-center">
-                          <div className="d-flex gap-3">
-                            <Link to="#">
-                              <i className="ti ti-edit me-2" />
-                              Edit
-                            </Link>
-                            <Link
-                              to="#"
-                              data-bs-toggle="modal"
-                              data-bs-target="#active"
-                            >
-                              <i className="ti ti-info-circle me-2" />
-                              Inactive
-                            </Link>
-                          </div>
-                          <Link
-                            to="#"
-                            className="btn bg-light"
-                          >
-                            Apply Offer
-                          </Link>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div className="col-xl-4 col-md-6">
-                  <div className="card p-0">
-                    <div className="card-body p-0">
-                      <div className="img-sec w-100">
-                        <Link to={routes.serviceDetails1}>
-                          <ImageWithBasePath
-                            src="assets/img/providers/provider-17.jpg"
-                            className="img-fluid rounded-top w-100"
-                            alt="img"
-                          />
-                        </Link>
-                        <div className="image-tag d-flex justify-content-end align-items-center">
-                          <span className="trend-tag">Car Wash</span>
-                          <span className="trend-tag-2  d-flex justify-content-center align-items-center rating text-gray">
-                            <i className="fa fa-star filled me-1" />
-                            4.9
-                          </span>
-                        </div>
-                      </div>
-                      <div className="p-3">
-                        <h5 className="mb-2 text-truncate">
-                          <Link to={routes.serviceDetails1}>Steam Car Wash</Link>
-                        </h5>
-                        <div className="d-flex justify-content-between align-items-center mb-3">
-                          <p className="fs-14 mb-0">
-                            <i className="ti ti-map-pin me-2" />
-                            San Jose, USA
-                          </p>
-                          <h5>
-                            $15.00{" "}
-                            <span className="fs-13 text-gray">
-                              <del>$25.00/hr</del>
-                            </span>
-                          </h5>
-                        </div>
-                        <div className="d-flex justify-content-between align-items-center">
-                          <div className="d-flex gap-3">
-                            <Link to="#">
-                              <i className="ti ti-edit me-2" />
-                              Edit
-                            </Link>
-                            <Link
-                              to="#"
-                              data-bs-toggle="modal"
-                              data-bs-target="#active"
-                            >
-                              <i className="ti ti-info-circle me-2" />
-                              Inactive
-                            </Link>
-                          </div>
-                          <Link
-                            to="#"
-                            className="btn bg-light"
-                          >
-                            Apply Offer
-                          </Link>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div className="col-xl-4 col-md-6">
-                  <div className="card p-0">
-                    <div className="card-body p-0">
-                      <div className="img-sec w-100">
-                        <Link to={routes.serviceDetails1}>
-                          <ImageWithBasePath
-                            src="assets/img/providers/provider-18.jpg"
-                            className="img-fluid rounded-top w-100"
-                            alt="img"
-                          />
-                        </Link>
-                        <div className="image-tag d-flex justify-content-end align-items-center">
-                          <span className="trend-tag">Electrical</span>
-                          <span className="trend-tag-2  d-flex justify-content-center align-items-center rating text-gray">
-                            <i className="fa fa-star filled me-1" />
-                            4.9
-                          </span>
-                        </div>
-                      </div>
-                      <div className="p-3">
-                        <h5 className="mb-2 text-truncate">
-                          <Link to={routes.serviceDetails1}>
-                            Electric Panel Repairing Service
-                          </Link>
-                        </h5>
-                        <div className="d-flex justify-content-between align-items-center mb-3">
-                          <p className="fs-14 mb-0">
-                            <i className="ti ti-map-pin me-2" />
-                            Texas, USA
-                          </p>
-                          <h5>
-                            $10.00{" "}
-                            <span className="fs-13 text-gray">
-                              <del>$15.00/hr</del>
-                            </span>
-                          </h5>
-                        </div>
-                        <div className="d-flex justify-content-between align-items-center">
-                          <div className="d-flex gap-3">
-                            <Link to="#">
-                              <i className="ti ti-edit me-2" />
-                              Edit
-                            </Link>
-                            <Link
-                              to="#"
-                              data-bs-toggle="modal"
-                              data-bs-target="#active"
-                            >
-                              <i className="ti ti-info-circle me-2" />
-                              Inactive
-                            </Link>
-                          </div>
-                          <Link
-                            to="#"
-                            className="btn bg-light"
-                          >
-                            Apply Offer
-                          </Link>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div className="col-xl-4 col-md-6">
-                  <div className="card p-0">
-                    <div className="card-body p-0">
-                      <div className="img-sec w-100">
-                        <Link to={routes.serviceDetails1}>
-                          <ImageWithBasePath
-                            src="assets/img/providers/provider-19.jpg"
-                            className="img-fluid rounded-top w-100"
-                            alt="img"
-                          />
-                        </Link>
-                        <div className="image-tag d-flex justify-content-end align-items-center">
-                          <span className="trend-tag">Cleaning</span>
-                          <span className="trend-tag-2  d-flex justify-content-center align-items-center rating text-gray">
-                            <i className="fa fa-star filled me-1" />
-                            4.9
-                          </span>
-                        </div>
-                      </div>
-                      <div className="p-3">
-                        <h5 className="mb-2 text-truncate">
-                          <Link to={routes.serviceDetails1}>
-                            House Cleaning Services
-                          </Link>
-                        </h5>
-                        <div className="d-flex justify-content-between align-items-center mb-3">
-                          <p className="fs-14 mb-0">
-                            <i className="ti ti-map-pin me-2" />
-                            Denver, USA
-                          </p>
-                          <h5>
-                            $15.00{" "}
-                            <span className="fs-13 text-gray">
-                              <del>$20.00/hr</del>
-                            </span>
-                          </h5>
-                        </div>
-                        <div className="d-flex justify-content-between align-items-center">
-                          <div className="d-flex gap-3">
-                            <Link to="#">
-                              <i className="ti ti-edit me-2" />
-                              Edit
-                            </Link>
-                            <Link to="#">
-                              <i className="ti ti-info-circle me-2" />
-                              Inactive
-                            </Link>
-                          </div>
-                          <Link
-                            to="#"
-                            className="btn bg-light"
-                          >
-                            Apply Offer
-                          </Link>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div className="col-xl-4 col-md-6">
-                  <div className="card p-0">
-                    <div className="card-body p-0">
-                      <div className="img-sec w-100">
-                        <Link to={routes.serviceDetails1}>
-                          <ImageWithBasePath
-                            src="assets/img/providers/provider-20.jpg"
-                            className="img-fluid rounded-top w-100"
-                            alt="img"
-                          />
-                        </Link>
-                        <div className="image-tag d-flex justify-content-end align-items-center">
-                          <span className="trend-tag">Painting</span>
-                          <span className="trend-tag-2  d-flex justify-content-center align-items-center rating text-gray">
-                            <i className="fa fa-star filled me-1" />
-                            4.9
-                          </span>
-                        </div>
-                      </div>
-                      <div className="p-3">
-                        <h5 className="mb-2 text-truncate">
-                          <Link to={routes.serviceDetails1}>
-                            Commercial Wall Painting
-                          </Link>
-                        </h5>
-                        <div className="d-flex justify-content-between align-items-center mb-3">
-                          <p className="fs-14 mb-0">
-                            <i className="ti ti-map-pin me-2" />
-                            Austin, USA
-                          </p>
-                          <h5>
-                            $25.00{" "}
-                            <span className="fs-13 text-gray">
-                              <del>$30.00/hr</del>
-                            </span>
-                          </h5>
-                        </div>
-                        <div className="d-flex justify-content-between align-items-center">
-                          <div className="d-flex gap-3">
-                            <Link to="#">
-                              <i className="ti ti-edit me-2" />
-                              Edit
-                            </Link>
-                            <Link
-                              to="#"
-                              data-bs-toggle="modal"
-                              data-bs-target="#active"
-                            >
-                              <i className="ti ti-info-circle me-2" />
-                              Inactive
-                            </Link>
-                          </div>
-                          <Link
-                            to="#"
-                            className="btn bg-light"
-                          >
-                            Apply Offer
-                          </Link>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div className="col-xl-4 col-md-6">
-                  <div className="card p-0">
-                    <div className="card-body p-0">
-                      <div className="img-sec w-100">
-                        <Link to={routes.serviceDetails1}>
-                          <ImageWithBasePath
-                            src="assets/img/providers/provider-22.jpg"
-                            className="img-fluid rounded-top w-100"
-                            alt="img"
-                          />
-                        </Link>
-                        <div className="image-tag d-flex justify-content-end align-items-center">
-                          <span className="trend-tag">Construction</span>
-                          <span className="trend-tag-2  d-flex justify-content-center align-items-center rating text-gray">
-                            <i className="fa fa-star filled me-1" />
-                            4.9
-                          </span>
-                        </div>
-                      </div>
-                      <div className="p-3">
-                        <h5 className="mb-2 text-truncate">
-                          <Link to={routes.serviceDetails1}>
-                            Building Construction Services
-                          </Link>
-                        </h5>
-                        <div className="d-flex justify-content-between align-items-center mb-3">
-                          <p className="fs-14 mb-0">
-                            <i className="ti ti-map-pin me-2" />
-                            Houston, USA
-                          </p>
-                          <h5>
-                            $20.00{" "}
-                            <span className="fs-13 text-gray">
-                              <del>$25.00/hr</del>
-                            </span>
-                          </h5>
-                        </div>
-                        <div className="d-flex justify-content-between align-items-center">
-                          <div className="d-flex gap-3">
-                            <Link to="#">
-                              <i className="ti ti-edit me-2" />
-                              Edit
-                            </Link>
-                            <Link
-                              to="#"
-                              data-bs-toggle="modal"
-                              data-bs-target="#active"
-                            >
-                              <i className="ti ti-info-circle me-2" />
-                              Inactive
-                            </Link>
-                          </div>
-                          <Link
-                            to="#"
-                            className="btn bg-light"
-                          >
-                            Apply Offer
-                          </Link>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div
-              className="tab-pane fade"
-              id="inactive-service"
-              role="tabpanel"
-              aria-labelledby="inactive-service"
-            >
-              <div className="row justify-content-center align-items-center">
-                <div className="col-xl-4 col-md-6">
-                  <div className="card p-0">
-                    <div className="card-body p-0">
-                      <div className="img-sec w-100">
-                        <Link to={routes.serviceDetails1}>
-                          <ImageWithBasePath
-                            src="assets/img/providers/provider-13.jpg"
-                            className="img-fluid rounded-top w-100"
-                            alt="img"
-                          />
-                        </Link>
-                        <div className="image-tag d-flex justify-content-end align-items-center">
-                          <span className="trend-tag">Car Wash</span>
-                          <span className="trend-tag-2  d-flex justify-content-center align-items-center rating text-gray">
-                            <i className="fa fa-star filled me-1" />
-                            4.9
-                          </span>
-                        </div>
-                      </div>
-                      <div className="p-3">
-                        <h5 className="mb-2 text-truncate">
-                          <Link to={routes.serviceDetails1}>Car Repair Service</Link>
-                        </h5>
-                        <div className="d-flex justify-content-between align-items-center mb-3">
-                          <p className="fs-14 mb-0">
-                            <i className="ti ti-map-pin me-2" />
-                            New Jersey, USA
-                          </p>
-                          <h5>
-                            $20.00{" "}
-                            <span className="fs-13 text-gray">
-                              <del>$25.00/hr</del>
-                            </span>
-                          </h5>
-                        </div>
-                        <div className="d-flex justify-content-between align-items-center">
-                          <div className="d-flex gap-3">
-                            <Link
-                              to="#"
-                              data-bs-toggle="modal"
-                              data-bs-target="#del-service"
-                            >
-                              <i className="ti ti-trash me-2" />
-                              Delete
-                            </Link>
-                            <Link
-                              to="#"
-                              data-bs-toggle="modal"
-                              data-bs-target="#in-active"
-                            >
-                              <i className="ti ti-info-circle me-2" />
-                              Active
-                            </Link>
-                          </div>
-                          <Link
-                            to="#"
-                            className="btn bg-light"
-                          >
-                            Apply Offer
-                          </Link>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div className="col-xl-4 col-md-6">
-                  <div className="card p-0">
-                    <div className="card-body p-0">
-                      <div className="img-sec w-100">
-                        <Link to={routes.serviceDetails1}>
-                          <ImageWithBasePath
-                            src="assets/img/providers/provider-14.jpg"
-                            className="img-fluid rounded-top w-100"
-                            alt="img"
-                          />
-                        </Link>
-                        <div className="image-tag d-flex justify-content-end align-items-center">
-                          <span className="trend-tag">Construction</span>
-                          <span className="trend-tag-2  d-flex justify-content-center align-items-center rating text-gray">
-                            <i className="fa fa-star filled me-1" />
-                            4.9
-                          </span>
-                        </div>
-                      </div>
-                      <div className="p-3">
-                        <h5 className="mb-2 text-truncate">
-                          <Link to={routes.serviceDetails1}>
-                            Toughened Glass Fitting Services
-                          </Link>
-                        </h5>
-                        <div className="d-flex justify-content-between align-items-center mb-3">
-                          <p className="fs-14 mb-0">
-                            <i className="ti ti-map-pin me-2" />
-                            Chicago, USA
-                          </p>
-                          <h5>
-                            $15.00
-                            <span className="fs-13 text-gray">
-                              <del>$20.00/hr</del>
-                            </span>
-                          </h5>
-                        </div>
-                        <div className="d-flex justify-content-between align-items-center">
-                          <div className="d-flex gap-3">
-                            <Link
-                              to="#"
-                              data-bs-toggle="modal"
-                              data-bs-target="#del-service"
-                            >
-                              <i className="ti ti-trash me-2" />
-                              Delete
-                            </Link>
-                            <Link
-                              to="#"
-                              data-bs-toggle="modal"
-                              data-bs-target="#in-active"
-                            >
-                              <i className="ti ti-info-circle me-2" />
-                              Active
-                            </Link>
-                          </div>
-                          <Link
-                            to="#"
-                            className="btn bg-light"
-                          >
-                            Apply Offer
-                          </Link>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div className="col-xl-4 col-md-6">
-                  <div className="card p-0">
-                    <div className="card-body p-0">
-                      <div className="img-sec w-100">
-                        <Link to={routes.serviceDetails1}>
-                          <ImageWithBasePath
-                            src="assets/img/providers/provider-15.jpg"
-                            className="img-fluid rounded-top w-100"
-                            alt="img"
-                          />
-                        </Link>
-                        <div className="image-tag d-flex justify-content-end align-items-center">
-                          <span className="trend-tag">Computer</span>
-                          <span className="trend-tag-2  d-flex justify-content-center align-items-center rating text-gray">
-                            <i className="fa fa-star filled me-1" />
-                            4.9
-                          </span>
-                        </div>
-                      </div>
-                      <div className="p-3">
-                        <h5 className="mb-2 text-truncate">
-                          <Link to={routes.serviceDetails1}>
-                            Computer &amp; Server AMC Service
-                          </Link>
-                        </h5>
-                        <div className="d-flex justify-content-between align-items-center mb-3">
-                          <p className="fs-14 mb-0">
-                            <i className="ti ti-map-pin me-2" />
-                            Los Angeles, USA
-                          </p>
-                          <h5>
-                            $15.00{" "}
-                            <span className="fs-13 text-gray">
-                              <del>$20.00/hr</del>
-                            </span>
-                          </h5>
-                        </div>
-                        <div className="d-flex justify-content-between align-items-center">
-                          <div className="d-flex gap-3">
-                            <Link
-                              to="#"
-                              data-bs-toggle="modal"
-                              data-bs-target="#del-service"
-                            >
-                              <i className="ti ti-trash me-2" />
-                              Delete
-                            </Link>
-                            <Link
-                              to="#"
-                              data-bs-toggle="modal"
-                              data-bs-target="#in-active"
-                            >
-                              <i className="ti ti-info-circle me-2" />
-                              Active
-                            </Link>
-                          </div>
-                          <Link
-                            to="#"
-                            className="btn bg-light "
-                          >
-                            Apply Offer
-                          </Link>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div className="col-xl-4 col-md-6">
-                  <div className="card p-0">
-                    <div className="card-body p-0">
-                      <div className="img-sec w-100">
-                        <Link to={routes.serviceDetails1}>
-                          <ImageWithBasePath
-                            src="assets/img/providers/provider-16.jpg"
-                            className="img-fluid rounded-top w-100"
-                            alt="img"
-                          />
-                        </Link>
-                        <div className="image-tag d-flex justify-content-end align-items-center">
-                          <span className="trend-tag">Interior</span>
-                          <span className="trend-tag-2  d-flex justify-content-center align-items-center rating text-gray">
-                            <i className="fa fa-star filled me-1" />
-                            4.9
-                          </span>
-                        </div>
-                      </div>
-                      <div className="p-3">
-                        <h5 className="mb-2 text-truncate">
-                          <Link to={routes.serviceDetails1}>Interior Designing</Link>
-                        </h5>
-                        <div className="d-flex justify-content-between align-items-center mb-3">
-                          <p className="fs-14 mb-0">
-                            <i className="ti ti-map-pin me-2" />
-                            Detroit, USA
-                          </p>
-                          <h5>
-                            $25.00{" "}
-                            <span className="fs-13 text-gray">
-                              <del>$30.00/hr</del>
-                            </span>
-                          </h5>
-                        </div>
-                        <div className="d-flex justify-content-between align-items-center">
-                          <div className="d-flex gap-3">
-                            <Link
-                              to="#"
-                              data-bs-toggle="modal"
-                              data-bs-target="#del-service"
-                            >
-                              <i className="ti ti-trash me-2" />
-                              Delete
-                            </Link>
-                            <Link
-                              to="#"
-                              data-bs-toggle="modal"
-                              data-bs-target="#in-active"
-                            >
-                              <i className="ti ti-info-circle me-2" />
-                              Active
-                            </Link>
-                          </div>
-                          <Link
-                            to="#"
-                            className="btn bg-light"
-                          >
-                            Apply Offer
-                          </Link>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div className="col-xl-4 col-md-6">
-                  <div className="card p-0">
-                    <div className="card-body p-0">
-                      <div className="img-sec w-100">
-                        <Link to={routes.serviceDetails1}>
-                          <ImageWithBasePath
-                            src="assets/img/providers/provider-17.jpg"
-                            className="img-fluid rounded-top w-100"
-                            alt="img"
-                          />
-                        </Link>
-                        <div className="image-tag d-flex justify-content-end align-items-center">
-                          <span className="trend-tag">Car Wash</span>
-                          <span className="trend-tag-2  d-flex justify-content-center align-items-center rating text-gray">
-                            <i className="fa fa-star filled me-1" />
-                            4.9
-                          </span>
-                        </div>
-                      </div>
-                      <div className="p-3">
-                        <h5 className="mb-2 text-truncate">
-                          <Link to={routes.serviceDetails1}>Steam Car Wash</Link>
-                        </h5>
-                        <div className="d-flex justify-content-between align-items-center mb-3">
-                          <p className="fs-14 mb-0">
-                            <i className="ti ti-map-pin me-2" />
-                            San Jose, USA
-                          </p>
-                          <h5>
-                            $15.00{" "}
-                            <span className="fs-13 text-gray">
-                              <del>$25.00/hr</del>
-                            </span>
-                          </h5>
-                        </div>
-                        <div className="d-flex justify-content-between align-items-center">
-                          <div className="d-flex gap-3">
-                            <Link
-                              to="#"
-                              data-bs-toggle="modal"
-                              data-bs-target="#del-service"
-                            >
-                              <i className="ti ti-trash me-2" />
-                              Delete
-                            </Link>
-                            <Link
-                              to="#"
-                              data-bs-toggle="modal"
-                              data-bs-target="#in-active"
-                            >
-                              <i className="ti ti-info-circle me-2" />
-                              Active
-                            </Link>
-                          </div>
-                          <Link
-                            to="#"
-                            className="btn bg-light"
-                          >
-                            Apply Offer
-                          </Link>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div className="col-xl-4 col-md-6">
-                  <div className="card p-0">
-                    <div className="card-body p-0">
-                      <div className="img-sec w-100">
-                        <Link to={routes.serviceDetails1}>
-                          <ImageWithBasePath
-                            src="assets/img/providers/provider-18.jpg"
-                            className="img-fluid rounded-top w-100"
-                            alt="img"
-                          />
-                        </Link>
-                        <div className="image-tag d-flex justify-content-end align-items-center">
-                          <span className="trend-tag">Electrical</span>
-                          <span className="trend-tag-2  d-flex justify-content-center align-items-center rating text-gray">
-                            <i className="fa fa-star filled me-1" />
-                            4.9
-                          </span>
-                        </div>
-                      </div>
-                      <div className="p-3">
-                        <h5 className="mb-2 text-truncate">
-                          <Link to={routes.serviceDetails1}>
-                            Electric Panel Repairing Service
-                          </Link>
-                        </h5>
-                        <div className="d-flex justify-content-between align-items-center mb-3">
-                          <p className="fs-14 mb-0">
-                            <i className="ti ti-map-pin me-2" />
-                            Texas, USA
-                          </p>
-                          <h5>
-                            $10.00{" "}
-                            <span className="fs-13 text-gray">
-                              <del>$15.00/hr</del>
-                            </span>
-                          </h5>
-                        </div>
-                        <div className="d-flex justify-content-between align-items-center">
-                          <div className="d-flex gap-3">
-                            <Link
-                              to="#"
-                              data-bs-toggle="modal"
-                              data-bs-target="#del-service"
-                            >
-                              <i className="ti ti-trash me-2" />
-                              Delete
-                            </Link>
-                            <Link
-                              to="#"
-                              data-bs-toggle="modal"
-                              data-bs-target="#in-active"
-                            >
-                              <i className="ti ti-info-circle me-2" />
-                              Active
-                            </Link>
-                          </div>
-                          <Link
-                            to="#"
-                            className="btn bg-light"
-                          >
-                            Apply Offer
-                          </Link>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div className="col-xl-4 col-md-6">
-                  <div className="card p-0">
-                    <div className="card-body p-0">
-                      <div className="img-sec w-100">
-                        <Link to={routes.serviceDetails1}>
-                          <ImageWithBasePath
-                            src="assets/img/providers/provider-19.jpg"
-                            className="img-fluid rounded-top w-100"
-                            alt="img"
-                          />
-                        </Link>
-                        <div className="image-tag d-flex justify-content-end align-items-center">
-                          <span className="trend-tag">Cleaning</span>
-                          <span className="trend-tag-2  d-flex justify-content-center align-items-center rating text-gray">
-                            <i className="fa fa-star filled me-1" />
-                            4.9
-                          </span>
-                        </div>
-                      </div>
-                      <div className="p-3">
-                        <h5 className="mb-2 text-truncate">
-                          <Link to={routes.serviceDetails1}>
-                            House Cleaning Services
-                          </Link>
-                        </h5>
-                        <div className="d-flex justify-content-between align-items-center mb-3">
-                          <p className="fs-14 mb-0">
-                            <i className="ti ti-map-pin me-2" />
-                            Denver, USA
-                          </p>
-                          <h5>
-                            $15.00{" "}
-                            <span className="fs-13 text-gray">
-                              <del>$20.00/hr</del>
-                            </span>
-                          </h5>
-                        </div>
-                        <div className="d-flex justify-content-between align-items-center">
-                          <div className="d-flex gap-3">
-                            <Link
-                              to="#"
-                              data-bs-toggle="modal"
-                              data-bs-target="#del-service"
-                            >
-                              <i className="ti ti-trash me-2" />
-                              Delete
-                            </Link>
-                            <Link
-                              to="#"
-                              data-bs-toggle="modal"
-                              data-bs-target="#in-active"
-                            >
-                              <i className="ti ti-info-circle me-2" />
-                              Active
-                            </Link>
-                          </div>
-                          <Link
-                            to="#"
-                            className="btn bg-light"
-                          >
-                            Apply Offer
-                          </Link>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div className="col-xl-4 col-md-6">
-                  <div className="card p-0">
-                    <div className="card-body p-0">
-                      <div className="img-sec w-100">
-                        <Link to={routes.serviceDetails1}>
-                          <ImageWithBasePath
-                            src="assets/img/providers/provider-20.jpg"
-                            className="img-fluid rounded-top w-100"
-                            alt="img"
-                          />
-                        </Link>
-                        <div className="image-tag d-flex justify-content-end align-items-center">
-                          <span className="trend-tag">Painting</span>
-                          <span className="trend-tag-2  d-flex justify-content-center align-items-center rating text-gray">
-                            <i className="fa fa-star filled me-1" />
-                            4.9
-                          </span>
-                        </div>
-                      </div>
-                      <div className="p-3">
-                        <h5 className="mb-2 text-truncate">
-                          <Link to={routes.serviceDetails1}>
-                            Commercial Wall Painting
-                          </Link>
-                        </h5>
-                        <div className="d-flex justify-content-between align-items-center mb-3">
-                          <p className="fs-14 mb-0">
-                            <i className="ti ti-map-pin me-2" />
-                            Austin, USA
-                          </p>
-                          <h5>
-                            $25.00{" "}
-                            <span className="fs-13 text-gray">
-                              <del>$30.00/hr</del>
-                            </span>
-                          </h5>
-                        </div>
-                        <div className="d-flex justify-content-between align-items-center">
-                          <div className="d-flex gap-3">
-                            <Link
-                              to="#"
-                              data-bs-toggle="modal"
-                              data-bs-target="#del-service"
-                            >
-                              <i className="ti ti-trash me-2" />
-                              Delete
-                            </Link>
-                            <Link
-                              to="#"
-                              data-bs-toggle="modal"
-                              data-bs-target="#in-active"
-                            >
-                              <i className="ti ti-info-circle me-2" />
-                              Active
-                            </Link>
-                          </div>
-                          <Link
-                            to="#"
-                            className="btn bg-light"
-                          >
-                            Apply Offer
-                          </Link>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div className="col-xl-4 col-md-6">
-                  <div className="card p-0">
-                    <div className="card-body p-0">
-                      <div className="img-sec w-100">
-                        <Link to={routes.serviceDetails1}>
-                          <ImageWithBasePath
-                            src="assets/img/providers/provider-22.jpg"
-                            className="img-fluid rounded-top w-100"
-                            alt="img"
-                          />
-                        </Link>
-                        <div className="image-tag d-flex justify-content-end align-items-center">
-                          <span className="trend-tag">Construction</span>
-                          <span className="trend-tag-2  d-flex justify-content-center align-items-center rating text-gray">
-                            <i className="fa fa-star filled me-1" />
-                            4.9
-                          </span>
-                        </div>
-                      </div>
-                      <div className="p-3">
-                        <h5 className="mb-2 text-truncate">
-                          <Link to={routes.serviceDetails1}>
-                            Building Construction Services
-                          </Link>
-                        </h5>
-                        <div className="d-flex justify-content-between align-items-center mb-3">
-                          <p className="fs-14 mb-0">
-                            <i className="ti ti-map-pin me-2" />
-                            Houston, USA
-                          </p>
-                          <h5>
-                            $20.00{" "}
-                            <span className="fs-13 text-gray">
-                              <del>$25.00/hr</del>
-                            </span>
-                          </h5>
-                        </div>
-                        <div className="d-flex justify-content-between align-items-center">
-                          <div className="d-flex gap-3">
-                            <Link
-                              to="#"
-                              data-bs-toggle="modal"
-                              data-bs-target="#del-service"
-                            >
-                              <i className="ti ti-trash me-2" />
-                              Delete
-                            </Link>
-                            <Link
-                              to="#"
-                              data-bs-toggle="modal"
-                              data-bs-target="#in-active"
-                            >
-                              <i className="ti ti-info-circle me-2" />
-                              Active
-                            </Link>
-                          </div>
-                          <Link
-                            to="#"
-                            className="btn bg-light"
-                          >
-                            Apply Offer
-                          </Link>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
               </div>
             </div>
           </div>
-          <div className="d-flex justify-content-between align-items-center">
-            <div className="value d-flex align-items-center">
-              <span>Show</span>
-              <select>
-                <option>7</option>
-              </select>
-              <span>entries</span>
-            </div>
-            <div className="d-flex align-items-center justify-content-center">
-              <span className="me-2 text-gray-9">1 - 07 of 10</span>
-              <nav aria-label="Page navigation">
-                <ul className="paginations d-flex justify-content-center align-items-center">
-                  <li className="page-item me-2">
-                    <Link
-                      className="page-link-1 active d-flex justify-content-center align-items-center "
-                      to="#"
-                    >
-                      1
+
+          <div className="row justify-content-center">
+            <div className="col-xl-12 col-lg-12">
+              <div className="tab-list mb-4" role="tablist">
+                <ul className="nav d-flex align-items-center">
+                  <li>
+                    <Link to="#" 
+                      className={`act-btn ${activeTab === 'active' ? 'active' : ''} me-3 p-2 rounded fs-14`}
+                      onClick={() => setActiveTab('active')}>
+                      Active Services
                     </Link>
                   </li>
-                  <li className="page-item me-2">
-                    <Link
-                      className="page-link-1 d-flex justify-content-center align-items-center "
-                      to="#"
-                    >
-                      2
-                    </Link>
-                  </li>
-                  <li className="page-item ">
-                    <Link
-                      className="page-link-1 d-flex justify-content-center align-items-center "
-                      to="#"
-                    >
-                      3
+                  <li>
+                    <Link to="#"
+                      className={"act-btn " + (activeTab === 'inactive' ? 'active' : '') + " p-2 rounded fs-14"}
+                      onClick={() => setActiveTab('inactive')}>
+                      Inactive Services
                     </Link>
                   </li>
                 </ul>
-              </nav>
+              </div>
+
+              <div className="tab-content pt-0">
+                {loading ? (
+                  <div className="text-center">
+                    <div className="spinner-border" role="status">
+                      <span className="visually-hidden">Loading...</span>
+                    </div>
+                  </div>
+                ) : services.length === 0 ? (
+                  <div className="text-center">
+                    <p>No {activeTab} services found.</p>
+                  </div>
+                ) : (
+                  <div className="row justify-content-center align-items-center">
+                    {services.map(service => renderServiceCard(service))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
-  </div>
-  {/* /Page Wrapper */}
-  {/* Inactive */}
-  <div className="modal fade custom-modal" id="in-active">
-    <div className="modal-dialog modal-dialog-centered">
-      <div className="modal-content">
-        <div className="modal-header d-flex align-items-center justify-content-between border-bottom">
-          <h5 className="modal-title">Inactive Service</h5>
-          <Link
-            to="#"
-            data-bs-dismiss="modal"
-            aria-label="Close"
-          >
-            <i className="ti ti-circle-x-filled fs-20" />
-          </Link>
-        </div>
-        <div className="modal-body">
-          <div className="write-review">
-            <form>
-              <p>Are you sure want to inactive this service?</p>
-              <div className="modal-submit text-end">
-                <Link
-                  to="#"
-                  className="btn btn-light me-2"
-                  data-bs-dismiss="modal"
-                >
-                  Cancel
-                </Link>
-                <button type="button" data-bs-dismiss="modal" className="btn btn-dark">
-                  Yes
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-  {/* Inactive */}
-  {/* active */}
-  <div className="modal fade custom-modal" id="active">
-    <div className="modal-dialog modal-dialog-centered">
-      <div className="modal-content">
-        <div className="modal-header d-flex align-items-center justify-content-between border-bottom">
-          <h5 className="modal-title">Active Services</h5>
-          <Link
-            to="#"
-            data-bs-dismiss="modal"
-            aria-label="Close"
-          >
-            <i className="ti ti-circle-x-filled fs-20" />
-          </Link>
-        </div>
-        <div className="modal-body">
-          <div className="write-review">
-            <form >
-              <p>Are you sure want to active this service?</p>
-              <div className="modal-submit text-end">
-                <Link
-                  to="#"
-                  className="btn btn-light me-2"
-                  data-bs-dismiss="modal"
-                >
-                  Cancel
-                </Link>
-                <button type="button" data-bs-dismiss="modal" className="btn btn-dark">
-                  Yes
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-  {/* /active */}
-  {/* Delete Service */}
-  <div className="modal fade custom-modal" id="del-service">
-    <div className="modal-dialog modal-dialog-centered">
-      <div className="modal-content">
-        <div className="modal-header d-flex align-items-center justify-content-between border-bottom">
-          <h5 className="modal-title">Delete Service</h5>
-          <Link
-            to="#"
-            data-bs-dismiss="modal"
-            aria-label="Close"
-          >
-            <i className="ti ti-circle-x-filled fs-20" />
-          </Link>
-        </div>
-        <div className="modal-body">
-          <div className="write-review">
-            <form>
-              <p>Are you sure want to delete this service?</p>
-              <div className="modal-submit text-end">
-                <Link
-                  to="#"
-                  className="btn btn-light me-2"
-                  data-bs-dismiss="modal"
-                >
-                  Cancel
-                </Link>
-                <button type="button" data-bs-dismiss="modal" className="btn btn-dark">
-                  Yes
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-  {/* /Delete Service */}
-</>
 
-  )
-}
+      {/* Delete Modal */}
+      <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>Delete Service</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p>Are you sure you want to delete this service?</p>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="light" onClick={() => setShowDeleteModal(false)}>
+            Cancel
+          </Button>
+          <Button variant="dark" onClick={handleDelete}>
+            Yes
+          </Button>
+        </Modal.Footer>
+      </Modal>
 
-export default ProviderServices
+      {/* Status Change Modal */}
+      <Modal show={showStatusModal} onHide={() => setShowStatusModal(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>
+          {targetStatus ? `${targetStatus === 'active' ? 'Activate' : 'Deactivate'}` : ''} Service
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p>Are you sure you want to {targetStatus === 'active' ? 'activate' : 'deactivate'} this service?</p>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="light" onClick={() => setShowStatusModal(false)}>
+            Cancel
+          </Button>
+          <Button variant="dark" onClick={handleStatusChange}>
+            Yes
+          </Button>
+        </Modal.Footer>
+      </Modal>
+    </>
+  );
+};
+
+export default ProviderServices;
