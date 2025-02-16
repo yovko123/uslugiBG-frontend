@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import ImageWithBasePath from '../../../../core/img/ImageWithBasePath';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { all_routes } from '../../../../core/data/routes/all_routes';
 import { serviceApi } from '../../../../core/service/serviceApi';
 import { toast } from 'react-toastify';
 import { Modal, Button } from 'react-bootstrap';
+import config from '../../../../config/config';
+
 
 interface ServiceType {
   id: number;
@@ -14,6 +16,9 @@ interface ServiceType {
   priceType: string;
   city: string;
   state: string;
+  address: string;
+  postalCode: string;
+  categoryId: number;
   category: {
     name: string;
   };
@@ -23,7 +28,26 @@ interface ServiceType {
   rating?: number;
 }
 
+interface ServiceFormData {
+  title: string;
+  description: string;
+  categoryId: string;
+  price: string;
+  priceType: string;
+  address: string;
+  city: string;
+  state: string;
+  postalCode: string;
+  isActive: boolean;
+}
+
+interface Category {
+  id: number;
+  name: string;
+}
+
 const ProviderServices = () => {
+  const navigate = useNavigate();
   const [services, setServices] = useState<ServiceType[]>([]);
   const [activeTab, setActiveTab] = useState('active');
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'a-z' | 'z-a'>('newest');
@@ -32,6 +56,21 @@ const ProviderServices = () => {
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [selectedService, setSelectedService] = useState<ServiceType | null>(null);
   const [targetStatus, setTargetStatus] = useState<'active' | 'inactive' | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [editFormData, setEditFormData] = useState<ServiceFormData>({
+    title: '',
+    description: '',
+    categoryId: '',
+    price: '',
+    priceType: 'HOURLY',
+    address: '',
+    city: '',
+    state: '',
+    postalCode: '',
+    isActive: true
+  });
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [editImages, setEditImages] = useState<File[]>([]);
   const routes = all_routes;
 
   useEffect(() => {
@@ -51,6 +90,21 @@ const ProviderServices = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => {
+    const { name, value } = e.target;
+    setEditFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+  
+
+  const handleEdit = (service: ServiceType) => {
+    navigate(`${routes.editService}/${service.id}`);
   };
 
   const handleStatusChange = async () => {
@@ -86,16 +140,21 @@ const ProviderServices = () => {
       <div className="card p-0">
         <div className="card-body p-0">
           <div className="img-sec w-100">
-            <Link to={`\${routes.serviceDetails1}?id=\${service.id}`}>
-              {service.serviceImages?.[0]?.imageUrl ? (
+            <Link to={`${routes.serviceDetails1}?id=${service.id}`}>
+            {service.serviceImages?.[0]?.imageUrl ? (
                 <img
-                  src={service.serviceImages[0].imageUrl}
+                  src={`${config.ASSETS_URL}${service.serviceImages[0].imageUrl}`}
                   className="img-fluid rounded-top w-100"
                   alt={service.title}
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.onerror = null;
+                    target.src = 'assets/img/services/service-01.jpg';
+                  }}
                 />
               ) : (
                 <ImageWithBasePath
-                  src="assets/img/services/default.jpg"
+                  src="assets/img/services/service-01.jpg"
                   className="img-fluid rounded-top w-100"
                   alt={service.title}
                 />
@@ -131,7 +190,7 @@ const ProviderServices = () => {
               <div className="d-flex gap-3">
                 {activeTab === 'active' ? (
                   <>
-                    <Link to={`/services/edit/${service.id}`}>
+                     <Link to={`${routes.editService.replace(':id', service.id.toString())}`}>
                       <i className="ti ti-edit me-2" />Edit
                     </Link>
                     <Link to="#" onClick={() => {

@@ -3,6 +3,7 @@ import { useAuth } from '../../../../core/contexts/AuthContext';
 import { toast } from 'react-toastify';
 import CustomerSideBar from '../common/sidebar';
 import BreadCrumb from '../../common/breadcrumb/breadCrumb';
+import config from '../../../../config/config';
 
 const CustomerDashboard = () => {
   const { user } = useAuth();
@@ -23,7 +24,7 @@ const CustomerDashboard = () => {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const response = await fetch('http://localhost:3005/api/users/stats', {
+        const response = await fetch(`${config.API_URL}/api/users/stats`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           }
@@ -56,7 +57,7 @@ const CustomerDashboard = () => {
     setError('');
 
     try {
-      const response = await fetch('http://localhost:3005/api/users/upgrade-to-provider', {
+      const response = await fetch(`${config.API_URL}/api/users/upgrade-to-provider`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

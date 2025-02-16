@@ -7,7 +7,7 @@ interface ServiceParams {
     sortBy?: string;
   }
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3005/api';
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3005';
 
 const authAxios = axios.create({
   baseURL: API_URL
@@ -23,7 +23,7 @@ authAxios.interceptors.request.use((config) => {
 
 export const serviceApi = {
   createService: async (formData: FormData) => {
-    const response = await authAxios.post('/services', formData, {
+    const response = await authAxios.post('api/services', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -32,17 +32,31 @@ export const serviceApi = {
   },
 
   getMyServices: async (params?: ServiceParams) => {
-    const response = await authAxios.get('/services/provider', { params });
+    const response = await authAxios.get('api/services/provider', { params });
     return response.data;
   },
 
   updateService: async (id: number, data: any) => {
-    const response = await authAxios.put(`/services/${id}`, data);
-    return response.data;
+    if (data instanceof FormData) {
+      const response = await authAxios.put(`api/services/${id}`, data, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      return response.data;
+    } else {
+      const response = await authAxios.put(`api/services/${id}`, data);
+      return response.data;
+    }
   },
 
   deleteService: async (id: number) => {
-    const response = await authAxios.delete(`/services/${id}`);
+    const response = await authAxios.delete(`api/services/${id}`);
+    return response.data;
+  },
+  
+  deleteServiceImage: async (imageId: number) => {
+    const response = await authAxios.delete(`api/service-images/${imageId}`);
     return response.data;
   },
 
@@ -57,12 +71,12 @@ export const serviceApi = {
 //   },
 
 getService: async (id: number) => {
-    const response = await authAxios.get(`/services/${id}`);
+    const response = await authAxios.get(`api/services/${id}`);
     return response.data;
   },
 
   getCategories: async () => {
-    const response = await authAxios.get('/categories');
+    const response = await authAxios.get('api/categories');
     return response.data;
   }
 };

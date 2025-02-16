@@ -10,6 +10,7 @@ import "react-datepicker/dist/react-datepicker.css";
 import { useAuth } from '../../../../core/contexts/AuthContext';
 import { toast } from 'react-toastify';
 import { MultiSelect } from 'primereact/multiselect';
+import config from '../../../../config/config';
 
 const languageOptions = [
   { label: 'Bulgarian', value: 'bg' },
@@ -130,7 +131,7 @@ const CustomerProfile = () => {
 
       console.log('Token being sent:', token);
 
-      const response = await fetch('http://localhost:3005/api/users/profile', {
+      const response = await fetch(`${config.API_URL}/api/users/profile`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

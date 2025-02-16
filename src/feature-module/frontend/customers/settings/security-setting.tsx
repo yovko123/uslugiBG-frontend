@@ -6,6 +6,7 @@ import BreadCrumb from '../../common/breadcrumb/breadCrumb';
 import CustomerSideBar from '../common/sidebar';
 import { useAuth } from '../../../../core/contexts/AuthContext';
 import { toast } from 'react-toastify';
+import config from '../../../../config/config';
 
 const SecuritySetting = () => {
   const routes = all_routes;
@@ -56,7 +57,7 @@ const SecuritySetting = () => {
         return;
       }
 
-      const response = await fetch('http://localhost:3005/api/users/settings/security', {
+      const response = await fetch(`${config.API_URL}/api/users/settings/security`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

@@ -4,6 +4,7 @@ import axios from 'axios';
 import { jwtDecode } from "jwt-decode";
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
+import config from '../../config/config';
 
 declare global {
   interface Window {
@@ -86,7 +87,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const refreshToken = localStorage.getItem('refreshToken');
       if (!refreshToken) return false;
 
-      const response = await axios.post('http://localhost:3005/api/auth/refresh-token', {
+      const response = await axios.post(`${config.API_URL}/api/auth/refresh-token`, {
         refreshToken
       });
 
@@ -121,7 +122,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (token) {
         try {
           // Validate current user session
-          const response = await axios.get('http://localhost:3005/api/users/me', {
+          const response = await axios.get(`${config.API_URL}/api/users/me`, {
             headers: {
               'Authorization': `Bearer ${token}`
             }
@@ -251,7 +252,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, password: string) => {
     try {
-      const response = await axios.post('http://localhost:3005/api/auth/login', {
+      const response = await axios.post(`${config.API_URL}/api/auth/login`, {
         email,
         password
       });
@@ -275,7 +276,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const register = async (userData: RegisterData) => {
     try {
-      const response = await axios.post('http://localhost:3005/api/auth/register', userData);
+      const response = await axios.post(`${config.API_URL}/api/auth/register`, userData);
 
       if (response.data.success && response.data.data) {
         const { user, accessToken, refreshToken } = response.data.data;

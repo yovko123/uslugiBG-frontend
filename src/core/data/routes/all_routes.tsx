@@ -1,3 +1,4 @@
+//src\core\data\routes\all_routes.tsx
 export const all_routes = {
   // home module path
   homeOne: '/home-two',
@@ -97,6 +98,7 @@ export const all_routes = {
   providerTransaction: '/providers/provider-transaction',
   providerLeaveHistory: '/providers/leave-history',
   providerEnquiry: '/providers/provider-enquiry',
+  editService: '/provider/services/edit/:id',
 
   // pages module path
   pages: '/pages/*',
@@ -183,7 +185,7 @@ export const all_routes = {
   inActiveServices: '/admin/services/inactive-services',
   addServices: '/admin/services/add-service',
   allServices: '/admin/services/all-services',
-  editService: '/admin/services/edit-services',
+  //editService: '/admin/services/edit-services',
   inProgressBooking: '/admin/booking/inprogress-booking',
   pendingServices: '/admin/services/pending-services',
   dashboard: '/admin/dashboard',

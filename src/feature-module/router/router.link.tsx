@@ -37,9 +37,16 @@ import NewHome from '../frontend/home/new-home';
 import ProviderRegister from '../frontend/pages/authentication/provider-signup';
 import Error500 from '../frontend/pages/Error page/error500';
 import UnifiedSignup from '../frontend/pages/authentication/unified-signup';
+import EditService from '../frontend/services/edit/EditService';
 const routes = all_routes;
 
 const publicRoutes = [
+  {
+    path: routes.editService,
+    name: 'edit-service',
+    element: <EditService />,
+    route: Route,
+  },
   {
     path: routes.homeOne,
     name: 'home-one',
