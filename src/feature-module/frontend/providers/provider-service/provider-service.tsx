@@ -7,7 +7,6 @@ import { toast } from 'react-toastify';
 import { Modal, Button } from 'react-bootstrap';
 import config from '../../../../config/config';
 
-
 interface ServiceType {
   id: number;
   title: string;
@@ -46,6 +45,8 @@ interface Category {
   name: string;
 }
 
+const ITEMS_PER_PAGE = 6;
+
 const ProviderServices = () => {
   const navigate = useNavigate();
   const [services, setServices] = useState<ServiceType[]>([]);
@@ -71,22 +72,36 @@ const ProviderServices = () => {
   });
   const [categories, setCategories] = useState<Category[]>([]);
   const [editImages, setEditImages] = useState<File[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalServices, setTotalServices] = useState(0);
+
   const routes = all_routes;
 
   useEffect(() => {
     fetchServices();
-  }, [activeTab, sortBy]);
+  }, [activeTab, sortBy, currentPage]);
 
   const fetchServices = async () => {
     try {
       setLoading(true);
+      // Pass pagination parameters (page & limit) along with sort and active status
       const response = await serviceApi.getMyServices({
         isActive: activeTab === 'active',
-        sortBy
+        sortBy,
+        page: currentPage,
+        limit: ITEMS_PER_PAGE
       });
-      setServices(response.data || []);
+      if (response.success) {
+        setServices(response.data || []);
+        setTotalServices(response.total || 0);
+      } else {
+        setServices([]);
+        setTotalServices(0);
+      }
     } catch (error) {
       toast.error('Failed to fetch services');
+      setServices([]);
+      setTotalServices(0);
     } finally {
       setLoading(false);
     }
@@ -101,7 +116,6 @@ const ProviderServices = () => {
       [name]: value
     }));
   };
-  
 
   const handleEdit = (service: ServiceType) => {
     navigate(`${routes.editService}/${service.id}`);
@@ -136,16 +150,42 @@ const ProviderServices = () => {
   };
 
   const renderServiceCard = (service: ServiceType) => (
-    <div key={service.id} className="col-xl-4 col-md-6">
-      <div className="card p-0">
-        <div className="card-body p-0">
-          <div className="img-sec w-100">
-            <Link to={`${routes.serviceDetails1}?id=${service.id}`}>
-            {service.serviceImages?.[0]?.imageUrl ? (
+    <div key={service.id} className="col-lg-3 col-md-4 col-sm-6">
+      <div className="card p-0" style={{ 
+        height: '100%', 
+        display: 'flex', 
+        flexDirection: 'column',
+        width: '100%',
+        overflow: 'hidden'
+      }}>
+        <div className="card-body p-0" style={{ flex: 1, overflow: 'hidden' }}>
+          <div className="img-sec position-relative" style={{ 
+              paddingTop: '60%', // 5:3 aspect ratio
+              width: '100%',
+              overflow: 'hidden',
+              backgroundColor: '#f8f9fa'
+            }}>
+            <Link 
+              to={`${routes.serviceDetails1}?id=${service.id}`}
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                display: 'block'
+              }}
+            >
+              {service.serviceImages?.[0]?.imageUrl ? (
                 <img
                   src={`${config.ASSETS_URL}${service.serviceImages[0].imageUrl}`}
-                  className="img-fluid rounded-top w-100"
                   alt={service.title}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    objectPosition: 'center'
+                  }}
                   onError={(e) => {
                     const target = e.target as HTMLImageElement;
                     target.onerror = null;
@@ -155,12 +195,17 @@ const ProviderServices = () => {
               ) : (
                 <ImageWithBasePath
                   src="assets/img/services/service-01.jpg"
-                  className="img-fluid rounded-top w-100"
                   alt={service.title}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    objectPosition: 'center'
+                  }}
                 />
               )}
             </Link>
-            <div className="image-tag d-flex justify-content-end align-items-center">
+            <div className="image-tag d-flex justify-content-between align-items-center">
               <span className="trend-tag">{service.category?.name}</span>
               {service.rating && (
                 <span className="trend-tag-2 d-flex justify-content-center align-items-center rating text-gray">
@@ -186,45 +231,74 @@ const ProviderServices = () => {
                 {service.priceType === 'HOURLY' && '/hr'}
               </h5>
             </div>
-            <div className="d-flex justify-content-between align-items-center">
-              <div className="d-flex gap-3">
-                {activeTab === 'active' ? (
-                  <>
-                     <Link to={`${routes.editService.replace(':id', service.id.toString())}`}>
-                      <i className="ti ti-edit me-2" />Edit
-                    </Link>
-                    <Link to="#" onClick={() => {
+            <div className="d-flex justify-content-between align-items-center border-top pt-3">
+              {activeTab === 'active' ? (
+                <>
+                  <Link 
+                    to={`${routes.editService.replace(':id', service.id.toString())}`} 
+                    className="btn btn-outline-primary btn-sm me-2"
+                  >
+                    <i className="ti ti-edit me-1" />Edit
+                  </Link>
+                  <Link
+                    to="#"
+                    className="btn btn-outline-secondary btn-sm"
+                    onClick={() => {
                       setSelectedService(service);
                       setTargetStatus('inactive');
                       setShowStatusModal(true);
-                    }}>
-                      <i className="ti ti-info-circle me-2" />Inactive
-                    </Link>
-                  </>
-                ) : (
-                  <>
-                    <Link to="#" onClick={() => {
+                    }}
+                  >
+                    <i className="ti ti-info-circle me-1" />Inactive
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <Link
+                    to="#"
+                    className="btn btn-outline-danger btn-sm me-2"
+                    onClick={() => {
                       setSelectedService(service);
                       setShowDeleteModal(true);
-                    }}>
-                      <i className="ti ti-trash me-2" />Delete
-                    </Link>
-                    <Link to="#" onClick={() => {
+                    }}
+                  >
+                    <i className="ti ti-trash me-1" />Delete
+                  </Link>
+                  <Link
+                    to="#"
+                    className="btn btn-outline-success btn-sm"
+                    onClick={() => {
                       setSelectedService(service);
                       setTargetStatus('active');
                       setShowStatusModal(true);
-                    }}>
-                      <i className="ti ti-info-circle me-2" />Active
-                    </Link>
-                  </>
-                )}
-              </div>
+                    }}
+                  >
+                    <i className="ti ti-info-circle me-1" />Active
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </div>
       </div>
     </div>
   );
+  
+  const totalPages = Math.ceil(totalServices / ITEMS_PER_PAGE);
+  const pagination = [];
+  for (let i = 1; i <= totalPages; i++) {
+    pagination.push(
+      <li key={i} className={`page-item me-2 ${currentPage === i ? 'active' : ''}`}>
+        <Link
+          className="page-link-1 d-flex justify-content-center align-items-center"
+          to="#"
+          onClick={() => setCurrentPage(i)}
+        >
+          {i}
+        </Link>
+      </li>
+    );
+  }
 
   return (
     <>
@@ -235,54 +309,66 @@ const ProviderServices = () => {
               <h5>My Services</h5>
               <div className="d-flex align-items-center">
                 <span className="fs-14 me-2">Sort</span>
-                  <div className="dropdown me-2">
-                    <button 
-                      className="btn btn-light dropdown-toggle"
-                      type="button"
-                      id="sortDropdown" 
-                      data-bs-toggle="dropdown"
-                      aria-expanded="false"
-                    >
-                      {sortBy === 'newest' && 'Newly Added'}
-                      {sortBy === 'oldest' && 'Oldest First'}
-                      {sortBy === 'a-z' && 'A to Z'}
-                      {sortBy === 'z-a' && 'Z to A'}
-                    </button>
-                    <ul className="dropdown-menu" aria-labelledby="sortDropdown">
-                      <li>
-                        <button 
-                          className={`dropdown-item ${sortBy === 'newest' ? 'active' : ''}`}
-                          onClick={() => setSortBy('newest')}
-                        >
-                          Recently Added
-                        </button>
-                      </li>
-                      <li>
-                        <button 
-                          className={`dropdown-item ${sortBy === 'oldest' ? 'active' : ''}`}
-                          onClick={() => setSortBy('oldest')}
-                        >
-                          Oldest First
-                        </button>
-                      </li>
-                      <li>
-                        <button 
-                          className={`dropdown-item ${sortBy === 'a-z' ? 'active' : ''}`}
-                          onClick={() => setSortBy('a-z')}
-                        >
-                          A to Z
-                        </button>
-                      </li>
-                      <li>
-                        <button 
-                          className={`dropdown-item ${sortBy === 'z-a' ? 'active' : ''}`}
-                          onClick={() => setSortBy('z-a')}
-                        >
-                          Z to A
-                        </button>
-                      </li>
-                    </ul>
-                  </div>
+                <div className="dropdown me-2">
+                  <button
+                    className="btn btn-light dropdown-toggle"
+                    type="button"
+                    id="sortDropdown"
+                    data-bs-toggle="dropdown"
+                    aria-expanded="false"
+                  >
+                    {sortBy === 'newest' && 'Newly Added'}
+                    {sortBy === 'oldest' && 'Oldest First'}
+                    {sortBy === 'a-z' && 'A to Z'}
+                    {sortBy === 'z-a' && 'Z to A'}
+                  </button>
+                  <ul className="dropdown-menu" aria-labelledby="sortDropdown">
+                    <li>
+                      <button
+                        className={`dropdown-item ${sortBy === 'newest' ? 'active' : ''}`}
+                        onClick={() => {
+                          setSortBy('newest');
+                          setCurrentPage(1);
+                        }}
+                      >
+                        Recently Added
+                      </button>
+                    </li>
+                    <li>
+                      <button
+                        className={`dropdown-item ${sortBy === 'oldest' ? 'active' : ''}`}
+                        onClick={() => {
+                          setSortBy('oldest');
+                          setCurrentPage(1);
+                        }}
+                      >
+                        Oldest First
+                      </button>
+                    </li>
+                    <li>
+                      <button
+                        className={`dropdown-item ${sortBy === 'a-z' ? 'active' : ''}`}
+                        onClick={() => {
+                          setSortBy('a-z');
+                          setCurrentPage(1);
+                        }}
+                      >
+                        A to Z
+                      </button>
+                    </li>
+                    <li>
+                      <button
+                        className={`dropdown-item ${sortBy === 'z-a' ? 'active' : ''}`}
+                        onClick={() => {
+                          setSortBy('z-a');
+                          setCurrentPage(1);
+                        }}
+                      >
+                        Z to A
+                      </button>
+                    </li>
+                  </ul>
+                </div>
                 <Link to={routes.createService} className="btn btn-dark d-flex align-items-center">
                   <i className="ti ti-circle-plus me-2" />Add Services
                 </Link>
@@ -290,21 +376,31 @@ const ProviderServices = () => {
             </div>
           </div>
 
-          <div className="row justify-content-center">
+          <div className="row">
             <div className="col-xl-12 col-lg-12">
               <div className="tab-list mb-4" role="tablist">
                 <ul className="nav d-flex align-items-center">
                   <li>
-                    <Link to="#" 
+                    <Link
+                      to="#"
                       className={`act-btn ${activeTab === 'active' ? 'active' : ''} me-3 p-2 rounded fs-14`}
-                      onClick={() => setActiveTab('active')}>
+                      onClick={() => {
+                        setActiveTab('active');
+                        setCurrentPage(1);
+                      }}
+                    >
                       Active Services
                     </Link>
                   </li>
                   <li>
-                    <Link to="#"
-                      className={"act-btn " + (activeTab === 'inactive' ? 'active' : '') + " p-2 rounded fs-14"}
-                      onClick={() => setActiveTab('inactive')}>
+                    <Link
+                      to="#"
+                      className={`act-btn ${activeTab === 'inactive' ? 'active' : ''} p-2 rounded fs-14`}
+                      onClick={() => {
+                        setActiveTab('inactive');
+                        setCurrentPage(1);
+                      }}
+                    >
                       Inactive Services
                     </Link>
                   </li>
@@ -323,9 +419,34 @@ const ProviderServices = () => {
                     <p>No {activeTab} services found.</p>
                   </div>
                 ) : (
-                  <div className="row justify-content-center align-items-center">
+                  <div className="row g-4">
                     {services.map(service => renderServiceCard(service))}
                   </div>
+                )}
+                {totalPages > 1 && (
+                  <nav className="mt-4">
+                    <ul className="paginations d-flex justify-content-center align-items-center">
+                      <li className={`page-item me-3 ${currentPage === 1 ? 'disabled' : ''}`}>
+                        <Link 
+                          to="#" 
+                          className="page-link"
+                          onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                        >
+                          <i className="ti ti-arrow-left me-2" />Prev
+                        </Link>
+                      </li>
+                      {pagination}
+                      <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
+                        <Link 
+                          to="#" 
+                          className="page-link"
+                          onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                        >
+                          Next<i className="ti ti-arrow-right ms-2" />
+                        </Link>
+                      </li>
+                    </ul>
+                  </nav>
                 )}
               </div>
             </div>
@@ -355,7 +476,7 @@ const ProviderServices = () => {
       <Modal show={showStatusModal} onHide={() => setShowStatusModal(false)}>
         <Modal.Header closeButton>
           <Modal.Title>
-          {targetStatus ? `${targetStatus === 'active' ? 'Activate' : 'Deactivate'}` : ''} Service
+            {targetStatus === 'active' ? 'Activate' : 'Deactivate'} Service
           </Modal.Title>
         </Modal.Header>
         <Modal.Body>

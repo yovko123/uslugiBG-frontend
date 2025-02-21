@@ -1,1236 +1,452 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Slider, SliderSingleProps } from 'antd';
+import { Slider } from 'antd';
 import { Dropdown } from 'primereact/dropdown';
 import ImageWithBasePath from '../../../../core/img/ImageWithBasePath';
 import { all_routes } from '../../../../core/data/routes/all_routes';
 import BreadCrumb from '../../common/breadcrumb/breadCrumb';
 import StickyBox from 'react-sticky-box';
+import { serviceApi, ServiceParams } from '../../../../core/service/serviceApi';
+import { toast } from 'react-toastify';
+import config from '../../../../config/config';
+
+
+
+interface Service {
+  id: number;
+  title: string;
+  description: string;
+  price: number;
+  priceType: string;
+  city: string;
+  state: string;
+  categoryId: number;
+  category: {
+    id: number;
+    name: string;
+  };
+  serviceImages: Array<{
+    imageUrl: string;
+  }>;
+  provider: {
+    user: {
+      profileImage?: string;
+    };
+  };
+  rating?: number;
+}
+
+interface Category {
+  id: number;
+  name: string;
+}
+
+interface ServiceFilters {
+  keyword: string;
+  categoryId: number | null;
+  city: string;
+  priceMin: string;
+  priceMax: string;
+  sortBy: SortType;
+}
+
+type SortType = 'newest' | 'price_asc' | 'price_desc';
+
+const ITEMS_PER_PAGE = 6;
 
 const ServiceGrid = () => {
   const routes = all_routes;
-  const [selectedValue1, setSelectedValue1] = useState(null);
-  const [selectedItems, setSelectedItems] = useState(Array(13).fill(false));
+  const [services, setServices] = useState<Service[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalServices, setTotalServices] = useState(0);
+  
+  const [filters, setFilters] = useState<ServiceFilters>({
+    keyword: '',
+    categoryId: null,
+    city: '',
+    priceMin: '0',
+    priceMax: '1000',
+    sortBy: 'newest'
+  });
 
   const [isExpanded, setIsExpanded] = useState(false);
   const filterCheckboxStyle = {
     height: isExpanded ? 'auto' : '150px',
+    overflow: 'hidden', // Add this to properly hide content
+    transition: 'height 0.3s ease' // Optional: for smooth transition
   };
-  const onChange = (value: number | number[]) => {
-    console.log('onChange: ', value);
+
+  useEffect(() => {
+    fetchServices();
+    fetchCategories();
+  }, [currentPage, filters]);
+
+  const fetchCategories = async () => {
+    try {
+      const response = await serviceApi.getCategories();
+      if (response.success) {
+        setCategories(response.data || []);  // Add default empty array
+      } else {
+        setCategories([]);
+      }
+    } catch (error) {
+      toast.error('Failed to fetch categories');
+      setCategories([]); // Ensure we always have an array
+    }
   };
-  const formatter: NonNullable<SliderSingleProps['tooltip']>['formatter'] = (value) => `$${value}`;
-  const onChangeComplete = (value: number | number[]) => {
-    console.log('onChangeComplete: ', value);
+
+  const fetchServices = async () => {
+    try {
+      setLoading(true);
+      const apiParams: ServiceParams = {
+        page: currentPage,
+        limit: ITEMS_PER_PAGE,
+        isActive: true,
+        keyword: filters.keyword || undefined,
+        categoryId: filters.categoryId?.toString() || undefined,
+        city: filters.city || undefined,
+        priceMin: filters.priceMin,
+        priceMax: filters.priceMax,
+        sortBy: filters.sortBy
+      };
+  
+      const response = await serviceApi.getServices(apiParams);
+      
+      if (response.success) {
+        setServices(response.data); // These are our services
+        // Fix: use the total count from the API response instead of the current page's length
+        setTotalServices(response.total);
+      } else {
+        setServices([]);
+        setTotalServices(0);
+      }
+    } catch (error) {
+      toast.error('Failed to fetch services');
+      setServices([]);
+      setTotalServices(0);
+    } finally {
+      setLoading(false);
+    }
   };
-  const value1 = [
-    { name: 'All Sub Category' },
-    { name: 'Computer' },
-    { name: 'Construction' },
-  ];
+
+  const handleSearch = (e?: React.FormEvent) => {
+    if (e) {
+      e.preventDefault();
+    }
+    setCurrentPage(1); // Reset to first page when searching
+    fetchServices();
+  };
+
+  const handlePriceChange = (value: [number, number]): void => {
+    setFilters(prev => ({
+      ...prev,
+      priceMin: value[0].toString(),
+      priceMax: value[1].toString()
+    }));
+  };
+
+  const handleCategoryChange = (categoryId: number): void => {
+    setFilters(prev => ({
+      ...prev,
+      categoryId
+    }));
+  };
+
   const toggleHeight = () => {
     setIsExpanded(!isExpanded);
   };
-  const handleItemClick = (index: number) => {
-    setSelectedItems((prevSelectedItems) => {
-      const updatedSelectedItems = [...prevSelectedItems];
-      updatedSelectedItems[index] = !updatedSelectedItems[index];
-      return updatedSelectedItems;
-    });
+
+  const handleSort = (sortType: SortType): void => {
+    setFilters(prev => ({
+      ...prev,
+      sortBy: sortType
+    }));
   };
 
+  const handleSliderChange = (value: number | number[]): void => {
+    if (Array.isArray(value) && value.length === 2) {
+      handlePriceChange([value[0], value[1]]);
+    }
+  };
 
-  return (
-    <>
-      <BreadCrumb title='Services' item1='Services'/>
-
-      <>
-  {/* Page Wrapper */}
-  <div className="page-wrapper">
-    <div className="content">
-      <div className="container">
-        <div className="row">
-          <div className="col-xl-3 col-lg-4 theiaStickySidebar">
-          <StickyBox>
-            <div className="card ">
-              <div className="card-body">
-                <form >
-                  <div className="d-flex align-items-center justify-content-between mb-3 pb-3 border-bottom">
-                    <h5>
-                      <i className="ti ti-filter-check me-2" />
-                      Filters
-                    </h5>
-                    <Link to="#">Reset Filter</Link>
-                  </div>
-                  <div className="mb-3 pb-3 border-bottom">
-                    <label className="form-label">Search By Keyword</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      placeholder="What are you looking for?"
-                    />
-                  </div>
-                  <div className="accordion border-bottom mb-3">
-                    <div className="accordion-item mb-3">
-                      <div
-                        className="accordion-header"
-                        id="accordion-headingThree"
-                      >
-                        <div
-                          className="accordion-button p-0 mb-3"
-                          data-bs-toggle="collapse"
-                          data-bs-target="#accordion-collapseThree"
-                          aria-expanded="true"
-                          aria-controls="accordion-collapseThree"
-                          role="button"
-                        >
-                          Categories
-                        </div>
-                      </div>
-                      <div
-                        id="accordion-collapseThree"
-                        className="accordion-collapse collapse show"
-                        aria-labelledby="accordion-headingThree"
-                      >
-                        <div className="content-list mb-3" id="fill-more" style={filterCheckboxStyle}>
-                          <div className="form-check mb-2">
-                            <label className="form-check-label">
-                              <input
-                                className="form-check-input"
-                                type="checkbox"
-                                defaultChecked
-                              />
-                              All Categories
-                            </label>
-                          </div>
-                          <div className="form-check mb-2">
-                            <label className="form-check-label">
-                              <input
-                                className="form-check-input"
-                                type="checkbox"
-                              />
-                              Construction
-                            </label>
-                          </div>
-                          <div className="form-check mb-2">
-                            <label className="form-check-label">
-                              <input
-                                className="form-check-input"
-                                type="checkbox"
-                              />
-                              Car Wash
-                            </label>
-                          </div>
-                          <div className="form-check mb-2">
-                            <label className="form-check-label">
-                              <input
-                                className="form-check-input"
-                                type="checkbox"
-                              />
-                              Electrical
-                            </label>
-                          </div>
-                          <div className="form-check mb-2">
-                            <label className="form-check-label">
-                              <input
-                                className="form-check-input"
-                                type="checkbox"
-                              />
-                              Cleaning
-                            </label>
-                          </div>
-                          <div className="form-check mb-2">
-                            <label className="form-check-label">
-                              <input
-                                className="form-check-input"
-                                type="checkbox"
-                              />
-                              Plumbing
-                            </label>
-                          </div>
-                          <div className="form-check mb-2">
-                            <label className="form-check-label">
-                              <input
-                                className="form-check-input"
-                                type="checkbox"
-                              />
-                              Designing
-                            </label>
-                          </div>
-                        </div>
-                        <Link
-                          to="#"
-                          id="more"
-                          className="more-view text-primary fs-14"
-                          onClick={toggleHeight}
-                        >
-                          {isExpanded ? (
-                        <>
-                          View Less{' '}
-                          <i className="ti ti-chevron-up ms-1" />
-                        </>
-                      ) : (
-                        <>
-                          View More{' '}
-                          <i className="ti ti-chevron-down ms-1" />
-                        </>
-                      )}
-                        </Link>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="accordion border-bottom mb-3">
-                    <div
-                      className="accordion-header"
-                      id="accordion-headingFour"
-                    >
-                      <div
-                        className="accordion-button p-0 mb-3"
-                        data-bs-toggle="collapse"
-                        data-bs-target="#accordion-collapseFour"
-                        aria-expanded="true"
-                        aria-controls="accordion-collapseFour"
-                        role="button"
-                      >
-                        Sub Category
-                      </div>
-                    </div>
-                    <div
-                      id="accordion-collapseFour"
-                      className="accordion-collapse collapse show"
-                      aria-labelledby="accordion-headingFour"
-                    >
-                      <div className="mb-3">
-                      <Dropdown
-                      value={selectedValue1}
-                      onChange={(e) => setSelectedValue1(e.value)}
-                      options={value1}
-                      optionLabel="name"
-                      placeholder="All Sub Category"
-                      className="w-100 select"
-                    />
-                      </div>
-                    </div>
-                  </div>
-                  <div className="accordion border-bottom mb-3">
-                    <div
-                      className="accordion-header"
-                      id="accordion-headingFive"
-                    >
-                      <div
-                        className="accordion-button p-0 mb-3"
-                        data-bs-toggle="collapse"
-                        data-bs-target="#accordion-collapseFive"
-                        aria-expanded="true"
-                        aria-controls="accordion-collapseFive"
-                        role="button"
-                      >
-                        Location
-                      </div>
-                    </div>
-                    <div
-                      id="accordion-collapseFive"
-                      className="accordion-collapse collapse show"
-                      aria-labelledby="accordion-headingFive"
-                    >
-                      <div className="mb-3">
-                        <div className="position-relative">
-                          <input
-                            type="text"
-                            className="form-control"
-                            placeholder="Select Location"
-                          />
-                          <span className="icon-addon">
-                            <i className="ti ti-map-pin" />
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="accordion border-bottom mb-3">
-                    <div className="accordion-header" id="accordion-headingSix">
-                      <div
-                        className="accordion-button p-0 mb-3"
-                        data-bs-toggle="collapse"
-                        data-bs-target="#accordion-collapseSix"
-                        aria-expanded="true"
-                        aria-controls="accordion-collapseSix"
-                        role="button"
-                      >
-                        Price Range
-                      </div>
-                    </div>
-                    <div
-                      id="accordion-collapseSix"
-                      className="accordion-collapse collapse show"
-                      aria-labelledby="accordion-headingSix"
-                    >
-                      <div className="filter-range">
-                      <Slider
-                        range
-                        tooltip={{ formatter  }}
-                        step={10}
-                        defaultValue={[20, 50]}
-                        onChange={onChange}
-                        onChangeComplete={onChangeComplete}
-                      />
-                      </div>
-                      <div className="filter-range-amount mb-3">
-                        <p className="fs-14">
-                          Price: <span>$5 - $210</span>
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="accordion">
-                    <div className="accordion-item mb-3">
-                      <div
-                        className="accordion-header"
-                        id="accordion-headingTwo"
-                      >
-                        <div
-                          className="accordion-button fs-18 p-0 mb-3"
-                          data-bs-toggle="collapse"
-                          data-bs-target="#accordion-collapseTwo"
-                          aria-expanded="true"
-                          aria-controls="accordion-collapseTwo"
-                          role="button"
-                        >
-                          Ratings
-                        </div>
-                      </div>
-                      <div
-                        id="accordion-collapseTwo"
-                        className="accordion-collapse collapse show"
-                        aria-labelledby="accordion-headingTwo"
-                      >
-                        <div className="mb-3">
-                          <div className="form-check mb-2">
-                            <label className="form-check-label d-block">
-                              <input
-                                className="form-check-input"
-                                type="checkbox"
-                                defaultChecked
-                              />
-                              <span className="rating">
-                                <i className="fas fa-star filled" />
-                                <i className="fas fa-star filled" />
-                                <i className="fas fa-star filled" />
-                                <i className="fas fa-star filled" />
-                                <i className="fas fa-star filled" />
-                                <span className="float-end">(55)</span>
-                              </span>
-                            </label>
-                          </div>
-                          <div className="form-check mb-2">
-                            <label className="form-check-label d-block">
-                              <input
-                                className="form-check-input"
-                                type="checkbox"
-                              />
-                              <span className="rating">
-                                <i className="fas fa-star filled" />
-                                <i className="fas fa-star filled" />
-                                <i className="fas fa-star filled" />
-                                <i className="fas fa-star filled" />
-                                <i className="fa-regular fa-star filled" />
-                                <span className="float-end">(48)</span>
-                              </span>
-                            </label>
-                          </div>
-                          <div className="form-check mb-2">
-                            <label className="form-check-label d-block">
-                              <input
-                                className="form-check-input"
-                                type="checkbox"
-                              />
-                              <span className="rating">
-                                <i className="fas fa-star filled" />
-                                <i className="fas fa-star filled" />
-                                <i className="fas fa-star filled" />
-                                <i className="fa-regular fa-star filled" />
-                                <i className="fa-regular fa-star filled" />
-                                <span className="float-end">(13)</span>
-                              </span>
-                            </label>
-                          </div>
-                          <div className="form-check mb-2">
-                            <label className="form-check-label d-block">
-                              <input
-                                className="form-check-input"
-                                type="checkbox"
-                              />
-                              <span className="rating">
-                                <i className="fas fa-star filled" />
-                                <i className="fas fa-star filled" />
-                                <i className="fa-regular fa-star filled" />
-                                <i className="fa-regular fa-star filled" />
-                                <i className="fa-regular fa-star filled" />
-                                <span className="float-end">(05)</span>
-                              </span>
-                            </label>
-                          </div>
-                          <div className="form-check mb-2">
-                            <label className="form-check-label d-block">
-                              <input
-                                className="form-check-input"
-                                type="checkbox"
-                              />
-                              <span className="rating">
-                                <i className="fas fa-star filled" />
-                                <i className="fa-regular fa-star filled" />
-                                <i className="fa-regular fa-star filled" />
-                                <i className="fa-regular fa-star filled" />
-                                <i className="fa-regular fa-star filled" />
-                                <span className="float-end">(00)</span>
-                              </span>
-                            </label>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <Link to={routes.search} className="btn btn-dark w-100">
-                    Search
-                  </Link>
-                </form>
-              </div>
+  const renderServiceCard = (service: Service) => (
+    <div key={service.id} className="col-xl-4 col-md-6">
+      <div className="card p-0">
+        <div className="card-body p-0">
+          <div className="img-sec w-100 position-relative" style={{ height: '200px', overflow: 'hidden' }}>
+            <Link to={`${routes.serviceDetails1}?id=${service.id}`}>
+              {service.serviceImages?.[0]?.imageUrl ? (
+                <img
+                  src={`${config.ASSETS_URL}${service.serviceImages[0].imageUrl}`}
+                  className="img-fluid w-100 h-100"
+                  alt={service.title}
+                  style={{ objectFit: 'cover' }}
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.onerror = null;
+                    target.src = 'assets/img/services/service-01.jpg';
+                  }}
+                />
+              ) : (
+                <ImageWithBasePath
+                  src="assets/img/services/service-01.jpg"
+                  className="img-fluid w-100 h-100"
+                  alt={service.title}
+                  style={{ objectFit: 'cover' }}
+                />
+              )}
+            </Link>
+            <div className="image-tag d-flex justify-content-end align-items-center">
+              <span className="trend-tag">{service.category?.name}</span>
             </div>
-            </StickyBox>
+            <span className="image-logo avatar avatar-md border rounded-circle">
+              {service.provider?.user?.profileImage ? (
+                <img
+                  src={`${config.ASSETS_URL}${service.provider.user.profileImage}`}
+                  className="img-fluid rounded-circle"
+                  alt="Provider"
+                />
+              ) : (
+                <ImageWithBasePath
+                  src="assets/img/providers/provider-01.jpg"
+                  className="img-fluid rounded-circle"
+                  alt="Provider"
+                />
+              )}
+            </span>
           </div>
-          <div className="col-xl-9 col-lg-8">
-            <div className="d-flex justify-content-between align-items-center flex-wrap mb-4">
-              <h4>
-                Found <span className="text-primary">11 Services</span>
-              </h4>
-              <div className="d-flex align-items-center">
-                <span className="text-dark me-2">Sort</span>
-                <div className="dropdown me-2">
-                  <Link
-                    to="#"
-                    className="dropdown-toggle bg-light-300 "
-                    data-bs-toggle="dropdown"
-                  >
-                    Price Low to High
-                  </Link>
-                  <div className="dropdown-menu">
-                    <Link
-                      to="#"
-                      className="dropdown-item active"
-                    >
-                      Price Low to High
-                    </Link>
-                    <Link to="#" className="dropdown-item">
-                      Price High to Low
-                    </Link>
-                  </div>
-                </div>
-                <Link
-                  to={routes.serviceGrid}
-                  className="tags d-flex justify-content-center align-items-center bg-primary rounded me-2"
-                >
-                  <i className="ti ti-layout-grid" />
-                </Link>
-                <Link
-                  to={routes.serviceList}
-                  className="tags d-flex justify-content-center align-items-center border rounded"
-                >
-                  <i className="ti ti-list" />
-                </Link>
-              </div>
+          <div className="p-3">
+            <h5 className="mb-2 text-truncate">
+              <Link to={`${routes.serviceDetails1}?id=${service.id}`}>
+                {service.title}
+              </Link>
+            </h5>
+            <div className="d-flex justify-content-between align-items-center mb-3">
+              <p className="fs-14 mb-0">
+                <i className="ti ti-map-pin me-2" />
+                {service.city}, {service.state}
+              </p>
+              {service.rating && (
+                <span className="rating text-gray fs-14">
+                  <i className="fa fa-star filled me-1" />
+                  {service.rating?.toFixed(1)}
+                </span>
+              )}
             </div>
-            <div className="row justify-content-center align-items-center">
-              <div className="col-xl-4 col-md-6">
-                <div className="card p-0">
-                  <div className="card-body p-0">
-                    <div className="img-sec w-100">
-                      <Link to={routes.serviceDetails1}>
-                        <ImageWithBasePath
-                          src="assets/img/providers/provider-13.jpg"
-                          className="img-fluid rounded-top w-100"
-                          alt="img"
-                        />
-                      </Link>
-                      <div className="image-tag d-flex justify-content-end align-items-center">
-                        <span className="trend-tag">Car Wash</span>
-                        <Link
-                          to="#"
-                          onClick={() => handleItemClick(1)}
-                          className={`fav-icon like-icon ${selectedItems[1] ? 'selected' : ''}`}
-                        >
-                          <i className="ti ti-heart" />
-                        </Link>
-                      </div>
-                      <span className="image-logo avatar avatar-md border rounded-circle">
-                        <ImageWithBasePath
-                          src="assets/img/providers/provider-01.jpg"
-                          className="img-fluid rounded-circle "
-                          alt="logo"
-                        />
-                      </span>
-                    </div>
-                    <div className="p-3">
-                      <h5 className="mb-2">
-                        <Link to={routes.serviceDetails1}>Car Repair Service</Link>
-                      </h5>
-                      <div className="d-flex justify-content-between align-items-center mb-3">
-                        <p className="fs-14 mb-0">
-                          <i className="ti ti-map-pin me-2" />
-                          Maryland City, MD, USA
-                        </p>
-                        <span className="rating text-gray fs-14">
-                          <i className="fa fa-star filled me-1" />
-                          4.9
-                        </span>
-                      </div>
-                      <div className="d-flex justify-content-between align-items-center">
-                        <h5>
-                          $25.00{" "}
-                          <span className="fs-13 text-gray">
-                            <del>$30.00/hr</del>
-                          </span>
-                        </h5>
-                        <Link
-                          to={routes.booking}
-                          className="btn bg-primary-transparent"
-                        >
-                          Book Now
-                        </Link>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="col-xl-4 col-md-6">
-                <div className="card p-0">
-                  <div className="card-body p-0">
-                    <div className="img-sec w-100">
-                      <Link to={routes.serviceDetails1}>
-                        <ImageWithBasePath
-                          src="assets/img/providers/provider-14.jpg"
-                          className="img-fluid rounded-top w-100"
-                          alt="img"
-                        />
-                      </Link>
-                      <div className="image-tag d-flex justify-content-end align-items-center">
-                        <span className="trend-tag">Construction</span>
-                        <Link
-                          to="#"
-                          onClick={() => handleItemClick(2)}
-                          className={`fav-icon like-icon ${selectedItems[2] ? 'selected' : ''}`}
-                        >
-                          <i className="ti ti-heart" />
-                        </Link>
-                      </div>
-                      <span className="image-logo avatar avatar-md border rounded-circle">
-                        <ImageWithBasePath
-                          src="assets/img/providers/provider-01.jpg"
-                          className="img-fluid rounded-circle "
-                          alt="logo"
-                        />
-                      </span>
-                    </div>
-                    <div className="p-3">
-                      <h5 className="mb-2">
-                        <Link to={routes.serviceDetails1}>
-                          Toughened Glass Fitting
-                        </Link>
-                      </h5>
-                      <div className="d-flex justify-content-between align-items-center mb-3">
-                        <p className="fs-14 mb-0">
-                          <i className="ti ti-map-pin me-2" />
-                          New Jersey, USA
-                        </p>
-                        <span className="rating text-gray fs-14">
-                          <i className="fa fa-star filled me-1" />
-                          4.7
-                        </span>
-                      </div>
-                      <div className="d-flex justify-content-between align-items-center">
-                        <h5>
-                          $20.00{" "}
-                          <span className="fs-13 text-gray">
-                            <del>$25.00/hr</del>
-                          </span>
-                        </h5>
-                        <Link
-                          to={routes.booking}
-                          className="btn bg-primary-transparent"
-                        >
-                          Book Now
-                        </Link>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="col-xl-4 col-md-6">
-                <div className="card p-0">
-                  <div className="card-body p-0">
-                    <div className="img-sec w-100">
-                      <Link to={routes.serviceDetails1}>
-                        <ImageWithBasePath
-                          src="assets/img/providers/provider-15.jpg"
-                          className="img-fluid rounded-top w-100"
-                          alt="img"
-                        />
-                      </Link>
-                      <div className="image-tag d-flex justify-content-end align-items-center">
-                        <span className="trend-tag">Computer</span>
-                        <Link
-                          to="#"
-                          onClick={() => handleItemClick(3)}
-                          className={`fav-icon like-icon ${selectedItems[3] ? 'selected' : ''}`}
-                        >
-                          <i className="ti ti-heart" />
-                        </Link>
-                      </div>
-                      <span className="image-logo avatar avatar-md border rounded-circle">
-                        <ImageWithBasePath
-                          src="assets/img/providers/provider-01.jpg"
-                          className="img-fluid rounded-circle "
-                          alt="logo"
-                        />
-                      </span>
-                    </div>
-                    <div className="p-3">
-                      <h5 className="mb-2 text-truncate">
-                        <Link to={routes.serviceDetails1}>
-                          Computer Hardware Service
-                        </Link>
-                      </h5>
-                      <div className="d-flex justify-content-between align-items-center mb-3">
-                        <p className="fs-14 mb-0">
-                          <i className="ti ti-map-pin me-2" />
-                          California, USA
-                        </p>
-                        <span className="rating text-gray fs-14">
-                          <i className="fa fa-star filled me-1" />
-                          4.5
-                        </span>
-                      </div>
-                      <div className="d-flex justify-content-between align-items-center">
-                        <h5>
-                          $20.00{" "}
-                          <span className="fs-13 text-gray">
-                            <del>$35.00/hr</del>
-                          </span>
-                        </h5>
-                        <Link
-                          to={routes.booking}
-                          className="btn bg-primary-transparent"
-                        >
-                          Book Now
-                        </Link>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="col-xl-4 col-md-6">
-                <div className="card p-0">
-                  <div className="card-body p-0">
-                    <div className="img-sec w-100">
-                      <Link to={routes.serviceDetails1}>
-                        <ImageWithBasePath
-                          src="assets/img/providers/provider-16.jpg"
-                          className="img-fluid rounded-top w-100"
-                          alt="img"
-                        />
-                      </Link>
-                      <div className="image-tag d-flex justify-content-end align-items-center">
-                        <span className="trend-tag">Interior</span>
-                        <Link
-                          to="#"
-                          onClick={() => handleItemClick(4)}
-                          className={`fav-icon like-icon ${selectedItems[4] ? 'selected' : ''}`}
-                        >
-                          <i className="ti ti-heart" />
-                        </Link>
-                      </div>
-                      <span className="image-logo avatar avatar-md border rounded-circle">
-                        <ImageWithBasePath
-                          src="assets/img/providers/provider-01.jpg"
-                          className="img-fluid rounded-circle "
-                          alt="logo"
-                        />
-                      </span>
-                    </div>
-                    <div className="p-3">
-                      <h5 className="mb-2">
-                        <Link to={routes.serviceDetails1}>Interior Designing</Link>
-                      </h5>
-                      <div className="d-flex justify-content-between align-items-center mb-3">
-                        <p className="fs-14 mb-0">
-                          <i className="ti ti-map-pin me-2" />
-                          Maryland, USA
-                        </p>
-                        <span className="rating text-gray fs-14">
-                          <i className="fa fa-star filled me-1" />
-                          4.8
-                        </span>
-                      </div>
-                      <div className="d-flex justify-content-between align-items-center">
-                        <h5>
-                          $30.00{" "}
-                          <span className="fs-13 text-gray">
-                            <del>$35.00/hr</del>
-                          </span>
-                        </h5>
-                        <Link
-                          to={routes.booking}
-                          className="btn bg-primary-transparent"
-                        >
-                          Book Now
-                        </Link>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="col-xl-4 col-md-6">
-                <div className="card p-0">
-                  <div className="card-body p-0">
-                    <div className="img-sec w-100">
-                      <Link to={routes.serviceDetails1}>
-                        <ImageWithBasePath
-                          src="assets/img/providers/provider-17.jpg"
-                          className="img-fluid rounded-top w-100"
-                          alt="img"
-                        />
-                      </Link>
-                      <div className="image-tag d-flex justify-content-end align-items-center">
-                        <span className="trend-tag">Car Wash</span>
-                        <Link
-                          to="#"
-                          onClick={() => handleItemClick(5)}
-                          className={`fav-icon like-icon ${selectedItems[5] ? 'selected' : ''}`}
-                        >
-                          <i className="ti ti-heart" />
-                        </Link>
-                      </div>
-                      <span className="image-logo avatar avatar-md border rounded-circle">
-                        <ImageWithBasePath
-                          src="assets/img/providers/provider-01.jpg"
-                          className="img-fluid rounded-circle "
-                          alt="logo"
-                        />
-                      </span>
-                    </div>
-                    <div className="p-3">
-                      <h5 className="mb-2">
-                        <Link to={routes.serviceDetails1}>Steam Car Wash</Link>
-                      </h5>
-                      <div className="d-flex justify-content-between align-items-center mb-3">
-                        <p className="fs-14 mb-0">
-                          <i className="ti ti-map-pin me-2" />
-                          Montana, USA
-                        </p>
-                        <span className="rating text-gray fs-14">
-                          <i className="fa fa-star filled me-1" />
-                          4.2
-                        </span>
-                      </div>
-                      <div className="d-flex justify-content-between align-items-center">
-                        <h5>
-                          $20.00{" "}
-                          <span className="fs-13 text-gray">
-                            <del>$25.00/hr</del>
-                          </span>
-                        </h5>
-                        <Link
-                          to={routes.booking}
-                          className="btn bg-primary-transparent"
-                        >
-                          Book Now
-                        </Link>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="col-xl-4 col-md-6">
-                <div className="card p-0">
-                  <div className="card-body p-0">
-                    <div className="img-sec w-100">
-                      <Link to={routes.serviceDetails1}>
-                        <ImageWithBasePath
-                          src="assets/img/providers/provider-18.jpg"
-                          className="img-fluid rounded-top w-100"
-                          alt="img"
-                        />
-                      </Link>
-                      <div className="image-tag d-flex justify-content-end align-items-center">
-                        <span className="trend-tag">Electrical</span>
-                        <Link
-                          to="#"
-                          onClick={() => handleItemClick(6)}
-                          className={`fav-icon like-icon ${selectedItems[6] ? 'selected' : ''}`}
-                        >
-                          <i className="ti ti-heart" />
-                        </Link>
-                      </div>
-                      <span className="image-logo avatar avatar-md border rounded-circle">
-                        <ImageWithBasePath
-                          src="assets/img/providers/provider-01.jpg"
-                          className="img-fluid rounded-circle "
-                          alt="logo"
-                        />
-                      </span>
-                    </div>
-                    <div className="p-3">
-                      <h5 className="mb-2">
-                        <Link to={routes.serviceDetails1}>
-                          Electric Panel Repairing
-                        </Link>
-                      </h5>
-                      <div className="d-flex justify-content-between align-items-center mb-3">
-                        <p className="fs-14 mb-0">
-                          <i className="ti ti-map-pin me-2" />
-                          Texas, USA
-                        </p>
-                        <span className="rating text-gray fs-14">
-                          <i className="fa fa-star filled me-1" />
-                          4.9
-                        </span>
-                      </div>
-                      <div className="d-flex justify-content-between align-items-center">
-                        <h5>
-                          $40.00{" "}
-                          <span className="fs-13 text-gray">
-                            <del>$45.00/hr</del>
-                          </span>
-                        </h5>
-                        <Link
-                          to={routes.booking}
-                          className="btn bg-primary-transparent"
-                        >
-                          Book Now
-                        </Link>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="col-xl-4 col-md-6">
-                <div className="card p-0">
-                  <div className="card-body p-0">
-                    <div className="img-sec w-100">
-                      <Link to={routes.serviceDetails1}>
-                        <ImageWithBasePath
-                          src="assets/img/providers/provider-19.jpg"
-                          className="img-fluid rounded-top w-100"
-                          alt="img"
-                        />
-                      </Link>
-                      <div className="image-tag d-flex justify-content-end align-items-center">
-                        <span className="trend-tag">Cleaning</span>
-                        <Link
-                          to="#"
-                          onClick={() => handleItemClick(7)}
-                          className={`fav-icon like-icon ${selectedItems[7] ? 'selected' : ''}`}
-                        >
-                          <i className="ti ti-heart" />
-                        </Link>
-                      </div>
-                      <span className="image-logo avatar avatar-md border rounded-circle">
-                        <ImageWithBasePath
-                          src="assets/img/providers/provider-01.jpg"
-                          className="img-fluid rounded-circle "
-                          alt="logo"
-                        />
-                      </span>
-                    </div>
-                    <div className="p-3">
-                      <h5 className="mb-2 text-truncate">
-                        <Link to="#">
-                          House Cleaning Services
-                        </Link>
-                      </h5>
-                      <div className="d-flex justify-content-between align-items-center mb-3">
-                        <p className="fs-14 mb-0">
-                          <i className="ti ti-map-pin me-2" />
-                          New Jersey, USA
-                        </p>
-                        <span className="rating text-gray fs-14">
-                          <i className="fa fa-star filled me-1" />
-                          4.6
-                        </span>
-                      </div>
-                      <div className="d-flex justify-content-between align-items-center">
-                        <h5>
-                          $45.00{" "}
-                          <span className="fs-13 text-gray">
-                            <del>$50.00/hr</del>
-                          </span>
-                        </h5>
-                        <Link
-                          to={routes.booking}
-                          className="btn bg-primary-transparent"
-                        >
-                          Book Now
-                        </Link>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="col-xl-4 col-md-6">
-                <div className="card p-0">
-                  <div className="card-body p-0">
-                    <div className="img-sec w-100">
-                      <Link to={routes.serviceDetails1}>
-                        <ImageWithBasePath
-                          src="assets/img/providers/provider-20.jpg"
-                          className="img-fluid rounded-top w-100"
-                          alt="img"
-                        />
-                      </Link>
-                      <div className="image-tag d-flex justify-content-end align-items-center">
-                        <span className="trend-tag">Construction</span>
-                        <Link
-                          to="#"
-                          onClick={() => handleItemClick(8)}
-                          className={`fav-icon like-icon ${selectedItems[8] ? 'selected' : ''}`}
-                        >
-                          <i className="ti ti-heart" />
-                        </Link>
-                      </div>
-                      <span className="image-logo avatar avatar-md border rounded-circle">
-                        <ImageWithBasePath
-                          src="assets/img/providers/provider-01.jpg"
-                          className="img-fluid rounded-circle "
-                          alt="logo"
-                        />
-                      </span>
-                    </div>
-                    <div className="p-3">
-                      <h5 className="mb-2">
-                        <Link to={routes.serviceDetails1}>Commercial Painting </Link>
-                      </h5>
-                      <div className="d-flex justify-content-between align-items-center mb-3">
-                        <p className="fs-14 mb-0">
-                          <i className="ti ti-map-pin me-2" />
-                          Alabama, USA
-                        </p>
-                        <span className="rating text-gray fs-14">
-                          <i className="fa fa-star filled me-1" />
-                          4.5
-                        </span>
-                      </div>
-                      <div className="d-flex justify-content-between align-items-center">
-                        <h5>
-                          $40.00{" "}
-                          <span className="fs-13 text-gray">
-                            <del>$45.00/hr</del>
-                          </span>
-                        </h5>
-                        <Link
-                          to={routes.booking}
-                          className="btn bg-primary-transparent"
-                        >
-                          Book Now
-                        </Link>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="col-xl-4 col-md-6">
-                <div className="card p-0">
-                  <div className="card-body p-0">
-                    <div className="img-sec w-100">
-                      <Link to={routes.serviceDetails1}>
-                        <ImageWithBasePath
-                          src="assets/img/providers/provider-21.jpg"
-                          className="img-fluid rounded-top w-100"
-                          alt="img"
-                        />
-                      </Link>
-                      <div className="image-tag d-flex justify-content-end align-items-center">
-                        <span className="trend-tag">Appliance</span>
-                        <Link
-                          to="#"
-                          onClick={() => handleItemClick(9)}
-                          className={`fav-icon like-icon ${selectedItems[9] ? 'selected' : ''}`}
-                        >
-                          <i className="ti ti-heart" />
-                        </Link>
-                      </div>
-                      <span className="image-logo avatar avatar-md border rounded-circle">
-                        <ImageWithBasePath
-                          src="assets/img/providers/provider-01.jpg"
-                          className="img-fluid rounded-circle "
-                          alt="logo"
-                        />
-                      </span>
-                    </div>
-                    <div className="p-3">
-                      <h5 className="mb-2">
-                        <Link to={routes.serviceDetails1}>
-                          Air Conditioner Service
-                        </Link>
-                      </h5>
-                      <div className="d-flex justify-content-between align-items-center mb-3">
-                        <p className="fs-14 mb-0">
-                          <i className="ti ti-map-pin me-2" />
-                          Washington, DC, USA
-                        </p>
-                        <span className="rating text-gray fs-14">
-                          <i className="fa fa-star filled me-1" />
-                          4.2
-                        </span>
-                      </div>
-                      <div className="d-flex justify-content-between align-items-center">
-                        <h5>
-                          $20.00{" "}
-                          <span className="fs-13 text-gray">
-                            <del>$25.00/hr</del>
-                          </span>
-                        </h5>
-                        <Link
-                          to={routes.booking}
-                          className="btn bg-primary-transparent"
-                        >
-                          Book Now
-                        </Link>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="col-xl-4 col-md-6">
-                <div className="card p-0">
-                  <div className="card-body p-0">
-                    <div className="img-sec w-100">
-                      <Link to={routes.serviceDetails1}>
-                        <ImageWithBasePath
-                          src="assets/img/providers/provider-22.jpg"
-                          className="img-fluid rounded-top w-100"
-                          alt="img"
-                        />
-                      </Link>
-                      <div className="image-tag d-flex justify-content-end align-items-center">
-                        <span className="trend-tag">Construction</span>
-                        <Link
-                          to="#"
-                          onClick={() => handleItemClick(10)}
-                          className={`fav-icon like-icon ${selectedItems[10] ? 'selected' : ''}`}
-                        >
-                          <i className="ti ti-heart" />
-                        </Link>
-                      </div>
-                      <span className="image-logo avatar avatar-md border rounded-circle">
-                        <ImageWithBasePath
-                          src="assets/img/providers/provider-01.jpg"
-                          className="img-fluid rounded-circle "
-                          alt="logo"
-                        />
-                      </span>
-                    </div>
-                    <div className="p-3">
-                      <h5 className="mb-2">
-                        <Link to={routes.serviceDetails1}>Building Construction</Link>
-                      </h5>
-                      <div className="d-flex justify-content-between align-items-center mb-3">
-                        <p className="fs-14 mb-0">
-                          <i className="ti ti-map-pin me-2" />
-                          Montana, USA
-                        </p>
-                        <span className="rating text-gray fs-14">
-                          <i className="fa fa-star filled me-1" />
-                          4.0
-                        </span>
-                      </div>
-                      <div className="d-flex justify-content-between align-items-center">
-                        <h5>
-                          $50.00{" "}
-                          <span className="fs-13 text-gray">
-                            <del>$55.00/hr</del>
-                          </span>
-                        </h5>
-                        <Link
-                          to={routes.booking}
-                          className="btn bg-primary-transparent"
-                        >
-                          Book Now
-                        </Link>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="col-xl-4 col-md-6">
-                <div className="card p-0">
-                  <div className="card-body p-0">
-                    <div className="img-sec w-100">
-                      <Link to={routes.serviceDetails1}>
-                        <ImageWithBasePath
-                          src="assets/img/providers/provider-23.jpg"
-                          className="img-fluid rounded-top w-100"
-                          alt="img"
-                        />
-                      </Link>
-                      <div className="image-tag d-flex justify-content-end align-items-center">
-                        <span className="trend-tag">Plumber</span>
-                        <Link
-                          to="#"
-                          onClick={() => handleItemClick(11)}
-                          className={`fav-icon like-icon ${selectedItems[11] ? 'selected' : ''}`}
-                        >
-                          <i className="ti ti-heart" />
-                        </Link>
-                      </div>
-                      <span className="image-logo avatar avatar-md border rounded-circle">
-                        <ImageWithBasePath
-                          src="assets/img/providers/provider-01.jpg"
-                          className="img-fluid rounded-circle "
-                          alt="logo"
-                        />
-                      </span>
-                    </div>
-                    <div className="p-3">
-                      <h5 className="mb-2">
-                        <Link to={routes.serviceDetails1}>Plumbing Services</Link>
-                      </h5>
-                      <div className="d-flex justify-content-between align-items-center mb-3">
-                        <p className="fs-14 mb-0">
-                          <i className="ti ti-map-pin me-2" />
-                          Virginia, USA
-                        </p>
-                        <span className="rating text-gray fs-14">
-                          <i className="fa fa-star filled me-1" />
-                          4.3
-                        </span>
-                      </div>
-                      <div className="d-flex justify-content-between align-items-center">
-                        <h5>
-                          $45.00{" "}
-                          <span className="fs-13 text-gray">
-                            <del>$50.00/hr</del>
-                          </span>
-                        </h5>
-                        <Link
-                          to={routes.booking}
-                          className="btn bg-primary-transparent"
-                        >
-                          Book Now
-                        </Link>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="col-xl-4 col-md-6">
-                <div className="card p-0">
-                  <div className="card-body p-0">
-                    <div className="img-sec w-100">
-                      <Link to={routes.serviceDetails1}>
-                        <ImageWithBasePath
-                          src="assets/img/providers/provider-24.jpg"
-                          className="img-fluid rounded-top w-100"
-                          alt="img"
-                        />
-                      </Link>
-                      <div className="image-tag d-flex justify-content-end align-items-center">
-                        <span className="trend-tag">Carpentry</span>
-                        <Link
-                          to="#"
-                          onClick={() => handleItemClick(12)}
-                          className={`fav-icon like-icon ${selectedItems[12] ? 'selected' : ''}`}
-                        >
-                          <i className="ti ti-heart" />
-                        </Link>
-                      </div>
-                      <span className="image-logo avatar avatar-md border rounded-circle">
-                        <ImageWithBasePath
-                          src="assets/img/providers/provider-01.jpg"
-                          className="img-fluid rounded-circle "
-                          alt="logo"
-                        />
-                      </span>
-                    </div>
-                    <div className="p-3">
-                      <h5 className="mb-2">
-                        <Link to={routes.serviceDetails1}>Wooden Carpentry Work</Link>
-                      </h5>
-                      <div className="d-flex justify-content-between align-items-center mb-3">
-                        <p className="fs-14 mb-0">
-                          <i className="ti ti-map-pin me-2" />
-                          Alabama, USA
-                        </p>
-                        <span className="rating text-gray fs-14">
-                          <i className="fa fa-star filled me-1" />
-                          4.1
-                        </span>
-                      </div>
-                      <div className="d-flex justify-content-between align-items-center">
-                        <h5>
-                          $25.00{" "}
-                          <span className="fs-13 text-gray">
-                            <del>$30.00/hr</del>
-                          </span>
-                        </h5>
-                        <Link
-                          to={routes.booking}
-                          className="btn bg-primary-transparent"
-                        >
-                          Book Now
-                        </Link>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+            <div className="d-flex justify-content-between align-items-center">
+              <h5>
+                {service.price} BGN
+                {service.priceType === 'HOURLY' && '/hr'}
+              </h5>
+              <Link
+                to={`${routes.booking}?serviceId=${service.id}`}
+                className="btn bg-primary-transparent"
+              >
+                Book Now
+              </Link>
             </div>
-            <nav aria-label="Page navigation">
-              <ul className="paginations d-flex justify-content-center align-items-center">
-                <li className="page-item me-3">
-                  <Link to="#" className="page-link">
-                    <i className="ti ti-arrow-left me-2" />
-                    Prev
-                  </Link>
-                </li>
-                <li className="page-item me-2">
-                  <Link
-                    className="page-link-1 active d-flex justify-content-center align-items-center "
-                    to="#"
-                  >
-                    1
-                  </Link>
-                </li>
-                <li className="page-item me-2">
-                  <Link
-                    className="page-link-1 d-flex justify-content-center align-items-center "
-                    to="#"
-                  >
-                    2
-                  </Link>
-                </li>
-                <li className="page-item me-3">
-                  <Link
-                    className="page-link-1 d-flex justify-content-center align-items-center "
-                    to="#"
-                  >
-                    3
-                  </Link>
-                </li>
-                <li className="page-item ">
-                  <Link className="page-link" to="#">
-                    Next
-                    <i className="ti ti-arrow-right ms-2" />
-                  </Link>
-                </li>
-              </ul>
-            </nav>
           </div>
         </div>
       </div>
     </div>
-  </div>
-  {/* /Page Wrapper */}
-</>
+  );
 
+  const totalPages = Math.ceil(totalServices / ITEMS_PER_PAGE);
+  const pagination = [];
+  for (let i = 1; i <= totalPages; i++) {
+    pagination.push(
+      <li key={i} className={`page-item me-2 ${currentPage === i ? 'active' : ''}`}>
+        <Link
+          className="page-link-1 d-flex justify-content-center align-items-center"
+          to="#"
+          onClick={() => setCurrentPage(i)}
+        >
+          {i}
+        </Link>
+      </li>
+    );
+  }
+
+  return (
+    <>
+      <BreadCrumb title='Services' item1='Services'/>
+      <div className="page-wrapper">
+        <div className="content">
+          <div className="container">
+            <div className="row">
+              {/* Filter Sidebar */}
+              <div className="col-xl-3 col-lg-4 theiaStickySidebar">
+                <StickyBox>
+                  <div className="card">
+                    <div className="card-body">
+                    <form onSubmit={handleSearch}>
+                        <div className="d-flex align-items-center justify-content-between mb-3 pb-3 border-bottom">
+                          <h5>
+                            <i className="ti ti-filter-check me-2" />
+                            Filters
+                          </h5>
+                          <Link to="#" onClick={() => {
+                            setFilters({
+                              keyword: '',
+                              categoryId: null,
+                              city: '',
+                              priceMin: filters.priceMin,
+                              priceMax: filters.priceMax,
+                              sortBy: filters.sortBy
+                            });
+                          }}>Reset Filter</Link>
+                        </div>
+
+                          {/* Search Keyword */}
+                          <div className="mb-3 pb-3 border-bottom">
+                            <label className="form-label">Search By Keyword</label>
+                            <input
+                              type="text"
+                              className="form-control"
+                              placeholder="What are you looking for?"
+                              value={filters.keyword}
+                              onChange={(e) => setFilters(prev => ({ 
+                                ...prev, 
+                                keyword: e.target.value 
+                              }))}
+                            />
+                          </div>
+
+                        {/* Categories */}
+                        <div className="mb-3 pb-3 border-bottom">
+                          <h6 className="mb-3">Categories</h6>
+                          <div style={filterCheckboxStyle}>
+                            {categories.map(category => (
+                              <div key={category.id} className="form-check mb-2">
+                                <input
+                                    type="checkbox"
+                                    className="form-check-input"
+                                    checked={filters.categoryId === category.id}
+                                    onChange={() => handleCategoryChange(category.id)}
+                                  />
+                                <label className="form-check-label">
+                                  {category.name}
+                                </label>
+                              </div>
+                            ))}
+                          </div>
+                          {(categories?.length > 5) && (
+                          <button
+                            type="button"
+                            className="more-view text-primary border-0 bg-transparent"
+                            onClick={toggleHeight}
+                          >
+                            {isExpanded ? 'View Less' : 'View More'}
+                          </button>
+                        )}
+                        </div>
+
+                        {/* Location */}
+                        <div className="mb-3 pb-3 border-bottom">
+                          <label className="form-label">Location</label>
+                          <input
+                            type="text"
+                            className="form-control"
+                            placeholder="Enter city"
+                            value={filters.city}
+                            onChange={(e) => setFilters(prev => ({ ...prev, city: e.target.value }))}
+                          />
+                        </div>
+
+                        {/* Price Range */}
+                        <div className="mb-3 pb-3 border-bottom">
+                          <label className="form-label">Price Range (BGN)</label>
+                          <Slider
+                            range
+                            min={0}
+                            max={1000}
+                            value={[parseFloat(filters.priceMin), parseFloat(filters.priceMax)]}
+                            onChange={handleSliderChange}
+                          />
+                          <div className="mt-2">
+                            <span>BGN {filters.priceMin} - BGN {filters.priceMax}</span>
+                          </div>
+                        </div>
+
+                        <button type="submit" className="btn btn-primary w-100">
+                          Apply Filters
+                        </button>
+                      </form>
+                    </div>
+                  </div>
+                </StickyBox>
+              </div>
+
+              {/* Service Grid */}
+              <div className="col-xl-9 col-lg-8">
+                <div className="d-flex justify-content-between align-items-center mb-4">
+                <h4>Found <span className="text-primary">{totalServices} Services</span></h4>
+                  <div className="d-flex align-items-center">
+                    <span className="me-2">Sort by:</span>
+                    <div className="dropdown">
+                      <button className="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                        {filters.sortBy === 'price_asc' ? 'Price Low to High' :
+                         filters.sortBy === 'price_desc' ? 'Price High to Low' :
+                         'Newest First'}
+                      </button>
+                      <ul className="dropdown-menu">
+                        <li><button className="dropdown-item" onClick={() => handleSort('newest')}>Newest First</button></li>
+                        <li><button className="dropdown-item" onClick={() => handleSort('price_asc')}>Price Low to High</button></li>
+                        <li><button className="dropdown-item" onClick={() => handleSort('price_desc')}>Price High to Low</button></li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+
+                {loading ? (
+                  <div className="text-center p-5">
+                    <div className="spinner-border" role="status">
+                      <span className="visually-hidden">Loading...</span>
+                    </div>
+                  </div>
+                ) : services.length === 0 ? (
+                  <div className="text-center p-5">
+                    <p>No services found matching your criteria.</p>
+                  </div>
+                ) : (
+                  <div className="row g-4">
+                    {services.map(service => renderServiceCard(service))}
+                  </div>
+                )}
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <nav className="mt-4">
+                    <ul className="paginations d-flex justify-content-center align-items-center">
+                      <li className={`page-item me-3 ${currentPage === 1 ? 'disabled' : ''}`}>
+                        <Link 
+                          to="#" 
+                          className="page-link"
+                          onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                        >
+                          <i className="ti ti-arrow-left me-2" />Prev
+                        </Link>
+                      </li>
+                      {pagination}
+                      <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
+                        <Link 
+                          to="#" 
+                          className="page-link"
+                          onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                        >
+                          Next<i className="ti ti-arrow-right ms-2" />
+                        </Link>
+                      </li>
+                    </ul>
+                  </nav>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </>
   );
 };

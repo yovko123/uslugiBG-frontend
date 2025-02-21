@@ -2,10 +2,33 @@
 import axios from 'axios';
 import { getAuthToken } from '../utils/auth';
 
-interface ServiceParams {
+export interface ServiceParams {
+  keyword?: string;
+  categoryId?: string;
+  city?: string;
+  priceMin?: string;
+  priceMax?: string;
+  sortBy?: string;
+  page?: number;
+  limit?: number;
+  isActive?: boolean;
+}
+
+interface ServiceUpdateData {
     isActive?: boolean;
-    sortBy?: string;
-  }
+    [key: string]: any;
+}
+
+// interface ServiceFilters {
+//   categoryId?: string;
+//   city?: string;
+//   priceMin?: string;
+//   priceMax?: string;
+//   keyword?: string;
+//   page?: number;
+//   limit?: number;
+//   sortBy?: string;
+// }
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3005';
 
@@ -36,17 +59,44 @@ export const serviceApi = {
     return response.data;
   },
 
-  updateService: async (id: number, data: any) => {
-    if (data instanceof FormData) {
-      const response = await authAxios.put(`api/services/${id}`, data, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-      return response.data;
-    } else {
-      const response = await authAxios.put(`api/services/${id}`, data);
-      return response.data;
+  // getAllServices: async (filters?: ServiceFilters) => {
+  //   try {
+  //     const response = await authAxios.get('/api/services', { 
+  //       params: {
+  //         ...filters,
+  //         isActive: true // We only want active services
+  //       }
+  //     });
+  //     return response.data;
+  //   } catch (error) {
+  //     console.error('Error fetching services:', error);
+  //     throw error;
+  //   }
+  // },
+
+  updateService: async (id: number, data: FormData | ServiceUpdateData) => {
+    try {
+        console.log('Making API request to update service:', id);
+        
+        // Check if the data is FormData (for full service updates with images)
+        if (data instanceof FormData) {
+            const response = await authAxios.put(`/api/services/${id}`, data, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
+                timeout: 30000,
+            });
+            return response.data;
+        }
+        
+        // Handle simple updates (like status changes)
+        const response = await authAxios.put(`/api/services/${id}`, data, {
+            timeout: 30000,
+        });
+        return response.data;
+    } catch (error) {
+        console.error('Service update API error:', error);
+        throw error;
     }
   },
 
@@ -56,21 +106,36 @@ export const serviceApi = {
   },
   
   deleteServiceImage: async (imageId: number) => {
-    const response = await authAxios.delete(`api/service-images/${imageId}`);
+    const response = await authAxios.delete(`/api/services/images/${imageId}`);
     return response.data;
   },
+  
+  getServices: async (params?: {
+    keyword?: string;
+    categoryId?: string;
+    city?: string;
+    priceMin?: string;
+    priceMax?: string;
+    sortBy?: string;
+    page?: number;
+    limit?: number;
+    isActive?: boolean;
+  }) => {
+    try {
+      const response = await authAxios.get('/api/services', { 
+        params: {
+          ...params,
+          isActive: true // Only fetch active services
+        }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching services:', error);
+      throw error;
+    }
+  },
 
-//   getServices: async (params?: {
-//     categoryId?: string;
-//     city?: string;
-//     priceMin?: number;
-//     priceMax?: number;
-//   }) => {
-//     const response = await authAxios.get('/services', { params });
-//     return response.data;
-//   },
-
-getService: async (id: number) => {
+  getService: async (id: number) => {
     const response = await authAxios.get(`api/services/${id}`);
     return response.data;
   },

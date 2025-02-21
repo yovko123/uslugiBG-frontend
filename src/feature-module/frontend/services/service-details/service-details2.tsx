@@ -11,7 +11,7 @@ import { all_routes } from '../../../../core/data/routes/all_routes';
 import BreadCrumb from '../../common/breadcrumb/breadCrumb';
 import StickyBox from 'react-sticky-box';
 
-const ServiceDetails2 = () => {
+const serviceDetails2 = () => {
   const routes = all_routes;
   const [nav1, setNav1] = useState(null);
   const [nav2, setNav2] = useState(null);
@@ -1443,4 +1443,4 @@ const ServiceDetails2 = () => {
   )
 }
 
-export default ServiceDetails2
+export default serviceDetails2

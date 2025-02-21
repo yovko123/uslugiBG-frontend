@@ -11,7 +11,7 @@ import BreadCrumb from '../../common/breadcrumb/breadCrumb';
 import VideoModal from '../../../../core/hooks/video-modal';
 import StickyBox from 'react-sticky-box';
 
-const ServiceDetails1 = () => {
+const serviceDetails = () => {
   const routes = all_routes;
   const [nav1, setNav1] = useState(null);
   const [nav2, setNav2] = useState(null);
@@ -1388,4 +1388,4 @@ const ServiceDetails1 = () => {
   );
 };
 
-export default ServiceDetails1;
+export default serviceDetails;

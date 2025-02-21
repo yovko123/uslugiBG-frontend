@@ -2017,6 +2017,50 @@ html.menu-opened body {
 /*-----------------
 	9. Slider
 -----------------------*/
+.service-main-slider .slick-slide {
+	padding: 0;
+	outline: none;
+  }
+  
+  .service-thumbnail-slider .slick-slide {
+	padding: 0 4px;
+	outline: none;
+  }
+  
+  .service-main-slider .slick-list {
+	margin: 0;
+  }
+.thumbnail-slider-wrapper {
+    padding: 0 15px;
+}
+
+.service-thumbnail-slider .slick-track {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.thumbnail-item {
+    padding: 4px;
+}
+
+.thumbnail-wrapper:hover img {
+    opacity: 1 !important;
+    transform: scale(1.05);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+/* For fewer images */
+.service-thumbnail-slider.slick-slider.slick-initialized {
+    display: flex;
+    justify-content: center;
+}
+
+.service-thumbnail-slider .slick-list {
+    width: 100%;
+}
 
 .owl-nav button.owl-next, .owl-nav button.owl-prev {
     width: 32px;
