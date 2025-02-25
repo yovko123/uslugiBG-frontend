@@ -10,8 +10,6 @@ import { serviceApi, ServiceParams } from '../../../../core/service/serviceApi';
 import { toast } from 'react-toastify';
 import config from '../../../../config/config';
 
-
-
 interface Service {
   id: number;
   title: string;
@@ -43,7 +41,7 @@ interface Category {
 
 interface ServiceFilters {
   keyword: string;
-  categoryId: number | null;
+  categoryIds: number[];
   city: string;
   priceMin: string;
   priceMax: string;
@@ -61,39 +59,86 @@ const ServiceGrid = () => {
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalServices, setTotalServices] = useState(0);
-  
-  const [filters, setFilters] = useState<ServiceFilters>({
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 1000]);
+  const [globalPriceRange, setGlobalPriceRange] = useState<[number, number]>([0, 1000]);
+
+  // Separate form values from applied filters
+  const [formValues, setFormValues] = useState<ServiceFilters>({
     keyword: '',
-    categoryId: null,
+    categoryIds: [],
     city: '',
     priceMin: '0',
     priceMax: '1000',
     sortBy: 'newest'
   });
+  
+  // Applied filters will only change when the Apply button is clicked
+  const [appliedFilters, setAppliedFilters] = useState<ServiceFilters>({
+    keyword: '',
+    categoryIds: [],
+    city: '',
+    priceMin: '0',
+    priceMax: '1000',
+    sortBy: 'newest'
+  });
+  
+  // Calculate actual price range from services
+
+  useEffect(() => {
+    if (services.length > 0 && globalPriceRange[0] === 0 && globalPriceRange[1] === 1000) {
+      const prices = services.map(service => service.price);
+      const minPrice = Math.min(...prices);
+      const maxPrice = Math.max(...prices);
+      
+      // Set a bit of padding on the range for better UX
+      const paddedMin = Math.max(0, Math.floor(minPrice * 0.9));
+      const paddedMax = Math.ceil(maxPrice * 1.1);
+      
+      setGlobalPriceRange([paddedMin, paddedMax]);
+      
+      // Initialize form values with this range
+      setFormValues(prev => ({
+        ...prev,
+        priceMin: paddedMin.toString(),
+        priceMax: paddedMax.toString()
+      }));
+      
+      setAppliedFilters(prev => ({
+        ...prev,
+        priceMin: paddedMin.toString(),
+        priceMax: paddedMax.toString()
+      }));
+    }
+  }, [services]);
 
   const [isExpanded, setIsExpanded] = useState(false);
   const filterCheckboxStyle = {
     height: isExpanded ? 'auto' : '150px',
-    overflow: 'hidden', // Add this to properly hide content
-    transition: 'height 0.3s ease' // Optional: for smooth transition
+    overflow: 'hidden',
+    transition: 'height 0.3s ease'
   };
 
+  // Only fetch services when appliedFilters or page changes
   useEffect(() => {
     fetchServices();
+  }, [currentPage, appliedFilters]);
+
+  // Fetch categories once on component mount
+  useEffect(() => {
     fetchCategories();
-  }, [currentPage, filters]);
+  }, []);
 
   const fetchCategories = async () => {
     try {
       const response = await serviceApi.getCategories();
       if (response.success) {
-        setCategories(response.data || []);  // Add default empty array
+        setCategories(response.data || []);
       } else {
         setCategories([]);
       }
     } catch (error) {
       toast.error('Failed to fetch categories');
-      setCategories([]); // Ensure we always have an array
+      setCategories([]);
     }
   };
 
@@ -104,19 +149,23 @@ const ServiceGrid = () => {
         page: currentPage,
         limit: ITEMS_PER_PAGE,
         isActive: true,
-        keyword: filters.keyword || undefined,
-        categoryId: filters.categoryId?.toString() || undefined,
-        city: filters.city || undefined,
-        priceMin: filters.priceMin,
-        priceMax: filters.priceMax,
-        sortBy: filters.sortBy
+        keyword: appliedFilters.keyword || undefined,
+        city: appliedFilters.city || undefined,
+        priceMin: appliedFilters.priceMin,
+        priceMax: appliedFilters.priceMax,
+        sortBy: appliedFilters.sortBy
       };
+      
+      // Add category IDs if any are selected
+      if (appliedFilters.categoryIds && appliedFilters.categoryIds.length > 0) {
+        // Send the category IDs as a comma-separated string
+        apiParams.categoryId = appliedFilters.categoryIds.join(',');
+      }
   
       const response = await serviceApi.getServices(apiParams);
       
       if (response.success) {
-        setServices(response.data); // These are our services
-        // Fix: use the total count from the API response instead of the current page's length
+        setServices(response.data);
         setTotalServices(response.total);
       } else {
         setServices([]);
@@ -131,16 +180,31 @@ const ServiceGrid = () => {
     }
   };
 
-  const handleSearch = (e?: React.FormEvent) => {
-    if (e) {
-      e.preventDefault();
-    }
-    setCurrentPage(1); // Reset to first page when searching
-    fetchServices();
+  // Apply filters on form submission
+  const handleApplyFilters = (e: React.FormEvent) => {
+    e.preventDefault();
+    setCurrentPage(1); // Reset to first page when applying filters
+    setAppliedFilters(formValues); // Apply the form values as filters
   };
 
+  // Reset filters
+  const handleResetFilters = () => {
+    const resetValues = {
+      keyword: '',
+      categoryIds: [],
+      city: '',
+      priceMin: globalPriceRange[0].toString(),
+      priceMax: globalPriceRange[1].toString(),
+      sortBy: appliedFilters.sortBy // Keep the current sort type
+    };
+    
+    setFormValues(resetValues);
+    setAppliedFilters(resetValues);
+  };
+
+  // Update form values without triggering API calls
   const handlePriceChange = (value: [number, number]): void => {
-    setFilters(prev => ({
+    setFormValues(prev => ({
       ...prev,
       priceMin: value[0].toString(),
       priceMax: value[1].toString()
@@ -148,21 +212,39 @@ const ServiceGrid = () => {
   };
 
   const handleCategoryChange = (categoryId: number): void => {
-    setFilters(prev => ({
-      ...prev,
-      categoryId
-    }));
+    setFormValues(prev => {
+      // Check if category is already selected
+      const isSelected = prev.categoryIds.includes(categoryId);
+      
+      if (isSelected) {
+        // Remove the category if already selected
+        return {
+          ...prev,
+          categoryIds: prev.categoryIds.filter(id => id !== categoryId)
+        };
+      } else {
+        // Add the category if not selected
+        return {
+          ...prev,
+          categoryIds: [...prev.categoryIds, categoryId]
+        };
+      }
+    });
   };
 
   const toggleHeight = () => {
     setIsExpanded(!isExpanded);
   };
 
+  // Apply sort immediately as it's typically expected behavior
   const handleSort = (sortType: SortType): void => {
-    setFilters(prev => ({
-      ...prev,
+    const newSortValue = {
+      ...formValues,
       sortBy: sortType
-    }));
+    };
+    
+    setFormValues(newSortValue);
+    setAppliedFilters(newSortValue); // Apply sort immediately
   };
 
   const handleSliderChange = (value: number | number[]): void => {
@@ -281,66 +363,70 @@ const ServiceGrid = () => {
                 <StickyBox>
                   <div className="card">
                     <div className="card-body">
-                    <form onSubmit={handleSearch}>
+                      <form onSubmit={handleApplyFilters}>
                         <div className="d-flex align-items-center justify-content-between mb-3 pb-3 border-bottom">
                           <h5>
                             <i className="ti ti-filter-check me-2" />
                             Filters
                           </h5>
-                          <Link to="#" onClick={() => {
-                            setFilters({
-                              keyword: '',
-                              categoryId: null,
-                              city: '',
-                              priceMin: filters.priceMin,
-                              priceMax: filters.priceMax,
-                              sortBy: filters.sortBy
-                            });
-                          }}>Reset Filter</Link>
+                          <Link to="#" onClick={handleResetFilters}>Reset Filter</Link>
                         </div>
 
-                          {/* Search Keyword */}
-                          <div className="mb-3 pb-3 border-bottom">
-                            <label className="form-label">Search By Keyword</label>
-                            <input
-                              type="text"
-                              className="form-control"
-                              placeholder="What are you looking for?"
-                              value={filters.keyword}
-                              onChange={(e) => setFilters(prev => ({ 
-                                ...prev, 
-                                keyword: e.target.value 
-                              }))}
-                            />
-                          </div>
+                        {/* Search Keyword */}
+                        <div className="mb-3 pb-3 border-bottom">
+                          <label className="form-label">Search By Keyword</label>
+                          <input
+                            type="text"
+                            className="form-control"
+                            placeholder="What are you looking for?"
+                            value={formValues.keyword}
+                            onChange={(e) => setFormValues(prev => ({ 
+                              ...prev, 
+                              keyword: e.target.value 
+                            }))}
+                          />
+                        </div>
 
                         {/* Categories */}
                         <div className="mb-3 pb-3 border-bottom">
-                          <h6 className="mb-3">Categories</h6>
+                          <h6 className="mb-3">Categories <small className="text-muted">(Select multiple)</small></h6>
                           <div style={filterCheckboxStyle}>
                             {categories.map(category => (
                               <div key={category.id} className="form-check mb-2">
                                 <input
-                                    type="checkbox"
-                                    className="form-check-input"
-                                    checked={filters.categoryId === category.id}
-                                    onChange={() => handleCategoryChange(category.id)}
-                                  />
-                                <label className="form-check-label">
+                                  type="checkbox"
+                                  className="form-check-input"
+                                  checked={formValues.categoryIds.includes(category.id)}
+                                  onChange={() => handleCategoryChange(category.id)}
+                                  id={`category-${category.id}`}
+                                />
+                                <label className="form-check-label" htmlFor={`category-${category.id}`}>
                                   {category.name}
                                 </label>
                               </div>
                             ))}
                           </div>
+                          {formValues.categoryIds.length > 0 && (
+                            <div className="mt-2 mb-2">
+                              <span className="badge bg-primary me-1">{formValues.categoryIds.length} categories selected</span>
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-outline-secondary"
+                                onClick={() => setFormValues(prev => ({...prev, categoryIds: []}))}
+                              >
+                                Clear All
+                              </button>
+                            </div>
+                          )}
                           {(categories?.length > 5) && (
-                          <button
-                            type="button"
-                            className="more-view text-primary border-0 bg-transparent"
-                            onClick={toggleHeight}
-                          >
-                            {isExpanded ? 'View Less' : 'View More'}
-                          </button>
-                        )}
+                            <button
+                              type="button"
+                              className="more-view text-primary border-0 bg-transparent"
+                              onClick={toggleHeight}
+                            >
+                              {isExpanded ? 'View Less' : 'View More'}
+                            </button>
+                          )}
                         </div>
 
                         {/* Location */}
@@ -350,8 +436,8 @@ const ServiceGrid = () => {
                             type="text"
                             className="form-control"
                             placeholder="Enter city"
-                            value={filters.city}
-                            onChange={(e) => setFilters(prev => ({ ...prev, city: e.target.value }))}
+                            value={formValues.city}
+                            onChange={(e) => setFormValues(prev => ({ ...prev, city: e.target.value }))}
                           />
                         </div>
 
@@ -360,13 +446,13 @@ const ServiceGrid = () => {
                           <label className="form-label">Price Range (BGN)</label>
                           <Slider
                             range
-                            min={0}
-                            max={1000}
-                            value={[parseFloat(filters.priceMin), parseFloat(filters.priceMax)]}
+                            min={globalPriceRange[0]}
+                            max={globalPriceRange[1]}
+                            value={[parseFloat(formValues.priceMin), parseFloat(formValues.priceMax)]}
                             onChange={handleSliderChange}
                           />
                           <div className="mt-2">
-                            <span>BGN {filters.priceMin} - BGN {filters.priceMax}</span>
+                            <span>BGN {formValues.priceMin} - BGN {formValues.priceMax}</span>
                           </div>
                         </div>
 
@@ -382,13 +468,13 @@ const ServiceGrid = () => {
               {/* Service Grid */}
               <div className="col-xl-9 col-lg-8">
                 <div className="d-flex justify-content-between align-items-center mb-4">
-                <h4>Found <span className="text-primary">{totalServices} Services</span></h4>
+                  <h4>Found <span className="text-primary">{totalServices} Services</span></h4>
                   <div className="d-flex align-items-center">
                     <span className="me-2">Sort by:</span>
                     <div className="dropdown">
                       <button className="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                        {filters.sortBy === 'price_asc' ? 'Price Low to High' :
-                         filters.sortBy === 'price_desc' ? 'Price High to Low' :
+                        {appliedFilters.sortBy === 'price_asc' ? 'Price Low to High' :
+                         appliedFilters.sortBy === 'price_desc' ? 'Price High to Low' :
                          'Newest First'}
                       </button>
                       <ul className="dropdown-menu">
