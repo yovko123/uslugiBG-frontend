@@ -25,6 +25,8 @@
     "bootstrap": "^5.3.3",
     "ckeditor4-react": "^5.0.0",
     "clsx": "^2.0.0",
+    "crypto-js": "^4.1.1",
+    "dompurify": "^3.0.5",
     "feather-icons": "^4.29.2",
     "feather-icons-react": "^0.6.2",
     "google-map-react": "^2.2.1",
