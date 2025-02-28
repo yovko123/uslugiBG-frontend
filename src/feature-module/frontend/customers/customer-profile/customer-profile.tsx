@@ -36,12 +36,38 @@ interface UserFormData {
   city: string;
   postalCode: string;
   language: string[];
+  countryId: number;
+  stateId: number | null;
+  cityId: number | null;
 }
 
+// Add these location interfaces
+interface Country {
+  id: number;
+  name: string;
+  code: string;
+}
+
+interface State {
+  id: number;
+  name: string;
+  countryId: number;
+}
+
+interface City {
+  id: number;
+  name: string;
+  stateId: number;
+  postalCode: string;
+}
+
+// Add this constant for Bulgaria
+const BULGARIA_COUNTRY = { id: 1, name: 'Bulgaria', code: 'BG' };
 
 const CustomerProfile = () => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [loadingLocations, setLoadingLocations] = useState(false);
   const [formData, setFormData] = useState<UserFormData>({
     firstName: user?.firstName || '',
     lastName: user?.lastName || '',
@@ -56,36 +82,138 @@ const CustomerProfile = () => {
     city: user?.city || '',
     postalCode: user?.postalCode || '',
     language: user?.language ? user.language.split(',') : [],
+    countryId: BULGARIA_COUNTRY.id,
+    stateId: null as number | null,
+    cityId: null as number | null,
   });
 
+  // Gender options - move this before the state initialization
+  const gender = [
+    { name: 'Select Gender' },
+    { name: 'Male' },
+    { name: 'Female' }
+  ];
+
+  // Initialize UI component states
+  const [selectedGender, setGender] = useState(() => {
+    // Find the matching gender object or default to "Select Gender"
+    return gender.find(g => g.name === user?.gender) || gender[0];
+  });
+  
+  const [selectedDate, setSelectedDate] = useState<Date | null>(() => {
+    // Try to parse the date in different formats if it exists
+    if (user?.dateOfBirth) {
+      // Log for debugging
+      console.log('Initial dateOfBirth:', user.dateOfBirth);
+      
+      try {
+        return new Date(user.dateOfBirth);
+      } catch (e) {
+        console.error('Error parsing date:', e);
+        return null;
+      }
+    }
+    return null;
+  });
+
+  // Add these location states
+  const [states, setStates] = useState<State[]>([]);
+  const [cities, setCities] = useState<City[]>([]);
+  
+  // Create state variables for selections
+  const [selectedCountry] = useState<Country>(BULGARIA_COUNTRY);
+  const [selectedState, setSelectedState] = useState<State | null>(null);
+  const [selectedCity, setSelectedCity] = useState<City | null>(null);
+
   useEffect(() => {
-    // Add this effect to update form data when user data changes
+    // Update form data and UI component states when user data changes
     if (user) {
+      // Use type assertion to avoid TypeScript errors with location IDs
+      const typedUser = user as any;
+      
+      // Update form data
       setFormData({
-        firstName: user.firstName || '',
-        lastName: user.lastName || '',
-        email: user.email || '',
-        phone: user.phone || '',
-        gender: user.gender || '',
-        dateOfBirth: user.dateOfBirth ? new Date(user.dateOfBirth) : null,
-        bio: user.bio || '',
-        address: user.address || '',           // Make sure these fields
-        country: user.country || '',           // are included in the
-        state: user.state || '',               // response from your
-        city: user.city || '',                 // backend API
-        postalCode: user.postalCode || '',
-        language: user.language ? user.language.split(',') : []
+        firstName: typedUser.firstName || '',
+        lastName: typedUser.lastName || '',
+        email: typedUser.email || '',
+        phone: typedUser.phone || '',
+        gender: typedUser.gender || '',
+        dateOfBirth: typedUser.dateOfBirth ? new Date(typedUser.dateOfBirth) : null,
+        bio: typedUser.bio || '',
+        address: typedUser.address || '',
+        country: typedUser.country || 'Bulgaria',
+        state: typedUser.state || '',
+        city: typedUser.city || '',
+        postalCode: typedUser.postalCode || '',
+        language: typedUser.language ? typedUser.language.split(',') : [],
+        countryId: BULGARIA_COUNTRY.id,
+        stateId: typedUser.stateId || null,
+        cityId: typedUser.cityId || null,
       });
+      
+      // Update UI component states
+      setGender(gender.find(g => g.name === typedUser.gender) || gender[0]);
+      setSelectedDate(typedUser.dateOfBirth ? new Date(typedUser.dateOfBirth) : null);
     }
   }, [user]);
 
-  const [selectedDate, setSelectedDate] = useState<Date | null>(
-    formData.dateOfBirth || new Date()
-  );
+  useEffect(() => {
+    const fetchStates = async () => {
+      setLoadingLocations(true);
+      try {
+        const response = await fetch(`${config.API_URL}/api/locations/states?countryId=${BULGARIA_COUNTRY.id}`);
+        if (!response.ok) throw new Error('Failed to fetch states');
+        
+        const data = await response.json();
+        setStates(data.data || []);
+        
+        // If user has a stateId, find and select that state - fix type issues
+        const typedUser = user as any;
+        if (typedUser?.stateId) {
+          const userState = data.data.find((state: State) => state.id === typedUser.stateId);
+          if (userState) {
+            setSelectedState(userState);
+            fetchCities(userState.id);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching states:', error);
+      } finally {
+        setLoadingLocations(false);
+      }
+    };
+    
+    fetchStates();
+  }, [user]);
   
-  const [selectedGender, setGender] = useState({ 
-    name: formData.gender || 'Select Gender' 
-  });
+  const fetchCities = async (stateId: number) => {
+    setLoadingLocations(true);
+    try {
+      const response = await fetch(`${config.API_URL}/api/locations/cities?stateId=${stateId}`);
+      if (!response.ok) throw new Error('Failed to fetch cities');
+      
+      const data = await response.json();
+      setCities(data.data || []);
+      
+      // If user has a cityId, find and select that city - fix type issues
+      const typedUser = user as any;
+      if (typedUser?.cityId) {
+        const userCity = data.data.find((city: City) => city.id === typedUser.cityId);
+        if (userCity) {
+          setSelectedCity(userCity);
+          // Auto-set postal code
+          setFormData(prev => ({
+            ...prev,
+            postalCode: userCity.postalCode
+          }));
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching cities:', error);
+    } finally {
+      setLoadingLocations(false);
+    }
+  };
 
   const handleDateChange = (date: Date) => {
     setSelectedDate(date);
@@ -118,18 +246,59 @@ const CustomerProfile = () => {
     }));
   };
 
+  const handleStateChange = (e: { value: State | null }) => {
+    setSelectedState(e.value);
+    
+    // Reset city when state changes
+    setSelectedCity(null);
+    
+    setFormData(prev => ({
+      ...prev,
+      stateId: e.value ? e.value.id : null,
+      cityId: null,
+      postalCode: ''
+    }));
+    
+    // Fetch cities for the selected state
+    if (e.value) {
+      fetchCities(e.value.id);
+    } else {
+      setCities([]);
+    }
+  };
+  
+  const handleCityChange = (e: { value: City | null }) => {
+    setSelectedCity(e.value);
+    
+    setFormData(prev => ({
+      ...prev,
+      cityId: e.value ? e.value.id : null,
+      // Auto-populate postal code
+      postalCode: e.value ? e.value.postalCode : ''
+    }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      const token = localStorage.getItem('token');
+      // Use auth_token instead of token
+      const token = localStorage.getItem('auth_token');
       if (!token) {
         toast.error('Not authenticated');
         return;
       }
 
-      console.log('Token being sent:', token);
+      // Prepare the data for submission
+      const dataToSubmit = {
+        ...formData,
+        language: (formData.language ?? []).join(','),
+        // Ensure location IDs are sent correctly
+        countryId: BULGARIA_COUNTRY.id,
+        stateId: formData.stateId || null,
+        cityId: formData.cityId || null
+      };
 
       const response = await fetch(`${config.API_URL}/api/users/profile`, {
         method: 'PUT',
@@ -137,10 +306,7 @@ const CustomerProfile = () => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({
-          ...formData,
-          language: (formData.language ?? []).join(',')
-        })
+        body: JSON.stringify(dataToSubmit)
       });
 
       const data = await response.json();
@@ -149,10 +315,10 @@ const CustomerProfile = () => {
         throw new Error(data.message || 'Failed to update profile');
       }
 
-    // Update local storage with new user data
-    if (data.data) {
-      localStorage.setItem('user', JSON.stringify(data.data));
-    }
+      // Update local storage with new user data
+      if (data.data) {
+        localStorage.setItem('user', JSON.stringify(data.data));
+      }
 
       toast.success('Profile updated successfully');
     } catch (error: any) {
@@ -162,12 +328,6 @@ const CustomerProfile = () => {
       setLoading(false);
     }
   };
-
-  const gender = [
-    { name: 'Select Gender' },
-    { name: 'Male' },
-    { name: 'Female' }
-  ];
 
   return (
     <>
@@ -287,6 +447,11 @@ const CustomerProfile = () => {
                               placeholderText='DD/MM/YYYY'
                               className="form-control datetimepicker w-100"
                               dateFormat="dd/MM/yyyy"
+                              showMonthDropdown
+                              showYearDropdown
+                              dropdownMode="select"
+                              yearDropdownItemNumber={100}
+                              onFocus={e => e.target.blur()}
                             />
                           </div>
                         </div>
@@ -320,39 +485,44 @@ const CustomerProfile = () => {
                           />
                         </div>
                       </div>
-                      <div className="col-md-6">
+                      <div className="col-md-6" style={{ display: 'none' }}> {/* Hide country */}
                         <div className="mb-3">
                           <label className="form-label">Country</label>
                           <input 
                             type="text" 
                             className="form-control"
-                            name="country"
-                            value={formData.country}
-                            onChange={handleInputChange}
+                            value="Bulgaria"
+                            readOnly
                           />
                         </div>
                       </div>
                       <div className="col-md-6">
                         <div className="mb-3">
-                          <label className="form-label">State</label>
-                          <input 
-                            type="text" 
-                            className="form-control"
-                            name="state"
-                            value={formData.state}
-                            onChange={handleInputChange}
+                          <label className="form-label">State/Province</label>
+                          <Dropdown
+                            value={selectedState}
+                            onChange={handleStateChange}
+                            options={states}
+                            optionLabel="name"
+                            placeholder="Select State"
+                            className="select w-100"
+                            disabled={loadingLocations}
+                            emptyMessage="Select a state"
                           />
                         </div>
                       </div>
                       <div className="col-md-6">
                         <div className="mb-3">
                           <label className="form-label">City</label>
-                          <input 
-                            type="text" 
-                            className="form-control"
-                            name="city"
-                            value={formData.city}
-                            onChange={handleInputChange}
+                          <Dropdown
+                            value={selectedCity}
+                            onChange={handleCityChange}
+                            options={cities}
+                            optionLabel="name"
+                            placeholder="Select City"
+                            className="select w-100"
+                            disabled={loadingLocations || !selectedState || cities.length === 0}
+                            emptyMessage={loadingLocations ? "Loading cities..." : selectedState ? "No cities available" : "Select a state first"}
                           />
                         </div>
                       </div>
@@ -364,8 +534,15 @@ const CustomerProfile = () => {
                             className="form-control"
                             name="postalCode"
                             value={formData.postalCode}
+                            readOnly={!!selectedCity}
+                            placeholder={selectedCity ? "Automatically set from city" : "Enter postal code"}
                             onChange={handleInputChange}
                           />
+                          {selectedCity && 
+                            <small className="form-text text-muted">
+                              Postal code is automatically set based on the selected city.
+                            </small>
+                          }
                         </div>
                       </div>
                       <div className="col-md-6">

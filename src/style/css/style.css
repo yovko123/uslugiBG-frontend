@@ -61,6 +61,89 @@ Version      : 1.0
 52. Responsive
 
 ========================================*/
+/*-----------------
+    1. Custom CSS
+-----------------------*/
+/* Enhanced Signup Progress Indicator Styles */
+.signup-progress {
+	margin: 30px 0;
+  }
+  
+  .progress-steps {
+	position: relative;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+  }
+  
+  .progress-step-item {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	position: relative;
+	z-index: 5;
+	width: 90px;
+  }
+  
+  .step-circle {
+	width: 40px;
+	height: 40px;
+	border-radius: 50%;
+	background-color: #e9ecef;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-weight: 600;
+	margin-bottom: 10px;
+	border: 2px solid transparent;
+	transition: all 0.3s ease;
+  }
+  
+  .step-label {
+	font-size: 14px;
+	color: #6c757d;
+	font-weight: 500;
+	text-align: center;
+  }
+  
+  .progress-step-item.active .step-circle {
+	background-color: #4c40ed;
+	color: white;
+	box-shadow: 0 0 0 3px rgba(76, 64, 237, 0.2);
+  }
+  
+  .progress-step-item.active .step-label {
+	color: #4c40ed;
+	font-weight: 600;
+  }
+  
+  .progress-line {
+	height: 3px;
+	width: 60px;
+	background-color: #e9ecef;
+	position: relative;
+	top: -20px;
+	z-index: 1;
+  }
+  
+  .progress-step-item.active + .progress-line {
+	background-color: #4c40ed;
+  }
+  
+  .progress-line + .progress-step-item.active .step-circle {
+	background-color: #4c40ed;
+	color: white;
+  }
+  
+  @media (max-width: 576px) {
+	.progress-line {
+	  width: 40px;
+	}
+	
+	.progress-step-item {
+	  width: 70px;
+	}
+  }
 
 /*-----------------
     1. General

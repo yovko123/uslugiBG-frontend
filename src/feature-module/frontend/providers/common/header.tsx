@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../../../core/contexts/AuthContext';
 import {
   set_dark_mode,
   set_is_mobile_sidebar,
@@ -14,7 +15,8 @@ import { AppState } from '../../../../core/models/interface';
 const ProviderHeader = () => {
   const routes = all_routes;
   const toggle_data = useSelector((state: AppState) => state.toggleSidebar2);
- 
+  const { logout } = useAuth();
+  const navigate = useNavigate();
   const dispatch = useDispatch();
   const [isFullscreen, setIsFullscreen] = useState(false);
   const toggleFullscreen = () => {
@@ -67,6 +69,18 @@ const ProviderHeader = () => {
     setDarkMode(localStorage.getItem("darkMode"));
     LayoutDark();
   }, [darkMode]);
+
+  // Add logout handler function
+  const handleLogout = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    try {
+      await logout();
+      navigate(routes.login);
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+  };
+
   return (
     <div className="header provider-header">
       {/* Logo */}
@@ -113,7 +127,7 @@ const ProviderHeader = () => {
           </div>
           {/* /Search */}
           <div className="d-flex align-items-center">
-            <div className="me-2 site-link">
+            {/* <div className="me-2 site-link">
               <Link
                 to="#"
                 className="d-flex align-items-center justify-content-center me-2"
@@ -121,7 +135,7 @@ const ProviderHeader = () => {
                 <i className="feather icon-globe me-1" />
                 Visit Website
               </Link>
-            </div>
+            </div> */}
             <div className="provider-head-links">
               <div>
                 
@@ -345,7 +359,8 @@ const ProviderHeader = () => {
                 <li>
                   <Link
                     className="dropdown-item d-flex align-items-center"
-                    to={routes.login}
+                    to="#"
+                    onClick={handleLogout}
                   >
                     <i className="ti ti-logout me-1" />
                     Logout
@@ -367,8 +382,7 @@ const ProviderHeader = () => {
           <i className="fa fa-ellipsis-v" />
         </Link>
         <div className="dropdown-menu dropdown-menu-end">
-         
-          <Link className="dropdown-item" to={routes.login}>
+          <Link className="dropdown-item" to="#" onClick={handleLogout}>
             Logout
           </Link>
         </div>

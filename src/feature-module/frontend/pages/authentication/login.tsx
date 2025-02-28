@@ -33,17 +33,40 @@ const Login = () => {
     setLoading(true);
   
     try {
+      // Call the login function from AuthContext - don't check its return value directly
       await login(formData.email, formData.password);
       
-      // Navigate based on user type - use the user from the parent scope
-      const targetPath = user?.userType === 'provider' 
-        ? routes.providerDashboard 
-        : routes.customerDashboard;
+      // After login, use the user from context instead
+      const currentUser = user;
       
+      if (!currentUser) {
+        throw new Error('Authentication failed');
+      }
+      
+      // Get user type from the current user object
+      // Use a type assertion to tell TypeScript that admin is a possible value
+      const userType = (currentUser.userType || 'customer') as 'admin' | 'provider' | 'customer';
+      
+      // Log successful login
+      console.log(`User logged in successfully as: ${userType}`);
+      
+      // Determine redirect path based on user type
+      let targetPath;
+      if (userType === 'admin') {
+        targetPath = routes.admin || '/admin'; // Fallback if route doesn't exist
+      } else if (userType === 'provider') {
+        targetPath = routes.providerDashboard;
+      } else {
+        targetPath = routes.customerDashboard;
+      }
+      
+      // Redirect user to appropriate dashboard
       navigate(targetPath);
       toast.success('Welcome back!');
     } catch (error: any) {
-      const errorMessage = error.response?.data?.message || 'Login failed';
+      console.error('Login error:', error);
+      // Improved error handling
+      const errorMessage = error.response?.data?.message || error.message || 'Login failed';
       toast.error(errorMessage);
     } finally {
       setLoading(false);
