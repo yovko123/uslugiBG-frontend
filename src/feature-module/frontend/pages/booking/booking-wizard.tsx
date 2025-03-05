@@ -1,3 +1,4 @@
+//uslugiBG-frontend\src\feature-module\frontend\pages\booking\booking-wizard.tsx
 import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
 import ImageWithBasePath from '../../../../core/img/ImageWithBasePath'

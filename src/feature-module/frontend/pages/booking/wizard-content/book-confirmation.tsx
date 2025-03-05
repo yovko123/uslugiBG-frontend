@@ -1,3 +1,5 @@
+// uslugiBG-frontend\src\feature-module\frontend\pages\booking\wizard-content\book-confirmation.tsx
+
 import React from 'react'
 import ImageWithBasePath from '../../../../../core/img/ImageWithBasePath'
 import { Link } from 'react-router-dom'

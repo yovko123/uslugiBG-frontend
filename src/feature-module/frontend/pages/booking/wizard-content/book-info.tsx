@@ -1,3 +1,5 @@
+//uslugiBG-frontend\src\feature-module\frontend\pages\booking\wizard-content\book-info.tsx
+
 import React, { MouseEventHandler } from 'react'
 import { Link } from 'react-router-dom'
 import ImageWithBasePath from '../../../../../core/img/ImageWithBasePath'
