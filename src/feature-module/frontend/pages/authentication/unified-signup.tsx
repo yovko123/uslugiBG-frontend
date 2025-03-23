@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import PhoneInput from 'react-phone-input-2';
 import ImageWithBasePath from '../../../../core/img/ImageWithBasePath';
@@ -13,6 +13,9 @@ import "react-datepicker/dist/react-datepicker.css";
 import { MultiSelect } from 'primereact/multiselect';
 import { registerLocale, setDefaultLocale } from "react-datepicker";
 import bgLocale from 'date-fns/locale/bg';
+
+// Add CSS to fix the calendar positioning
+import './styles.css';
 
 // Language options
 const languageOptions = [
@@ -408,6 +411,12 @@ const UnifiedSignup = () => {
                       maxDate={new Date()}
                       minDate={new Date(1900, 0, 1)}
                       locale="bg"
+                      // Add these properties to fix z-index issues
+                      popperProps={{
+                        strategy: "fixed"
+                      }}
+                      popperClassName="datepicker-popper"
+                      popperPlacement="bottom-start"
                     />
                   </div>
                 </div>
@@ -462,14 +471,44 @@ const UnifiedSignup = () => {
               >
                 Back
               </button>
-              <button
-                type="button"
-                className="btn btn-lg btn-linear-primary w-50"
-                onClick={formData.isProvider ? goToNextStep : handleSubmit}
-              >
-                {formData.isProvider ? 'Continue' : 'Create Account'}
-              </button>
+              {!formData.isProvider && (
+                <button
+                  type="button"
+                  className="btn btn-lg btn-linear-primary w-50"
+                  onClick={handleSubmit}
+                >
+                  {loading ? 'Creating Account...' : 'Create Account'}
+                </button>
+              )}
+              {formData.isProvider && (
+                <button
+                  type="button"
+                  className="btn btn-lg btn-linear-primary w-50"
+                  onClick={goToNextStep}
+                >
+                  Continue
+                </button>
+              )}
             </div>
+
+            {/* Add Terms and Conditions checkbox for step 2 */}
+            {!formData.isProvider && (
+              <div className="form-check mt-3">
+                <input
+                  type="checkbox"
+                  className="form-check-input"
+                  id="terms"
+                  checked={agreeToTerms}
+                  onChange={(e) => setAgreeToTerms(e.target.checked)}
+                />
+                <label className="form-check-label" htmlFor="terms">
+                  I agree to the{" "}
+                  <Link to="#" className="text-primary">Terms of Service</Link>
+                  {" "}and{" "}
+                  <Link to="#" className="text-primary">Privacy Policy</Link>
+                </label>
+              </div>
+            )}
           </>
         );
         

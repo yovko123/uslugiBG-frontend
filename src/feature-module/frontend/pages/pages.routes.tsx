@@ -2,7 +2,6 @@ import React from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import AboutUs from './about-us/about-us';
 import Categories from './categories/categories';
-
 import Faq from './faq/faq';
 import Howitworks from './how-it-works/how-it-works';
 import TermsCondition from './terms-condition/terms-condition';
@@ -12,17 +11,14 @@ import InstallerNew from './installer-new/installer-new';
 import Maintenance from './maintenance/maintenance';
 import Pricing from './pricing/pricing';
 import PrivacyPolicy from './privacy-policy/privacy-policy';
-import Booking1 from './booking/booking-1';
 import SessionExpired from './session-expired/session-expired';
 import Error404 from './Error page/error404';
 import Error500 from './Error page/error500';
-
-import BookingDetails from './booking/booking-details';
 import PaymentSetting from '../providers/settings/payment-setting';
 import CommingSoon from './comming-soon/comming-soon';
-import BookingWizard from './booking/booking-wizard';
 import Invoice from '../customers/invoice/invoice';
 import Categories2 from './categories/categories2';
+import BookingRoutes from '../../router/booking-routes';
 
 const PagesRoutes = () => {
   const all_pages_routes = [
@@ -68,7 +64,6 @@ const PagesRoutes = () => {
       element: <Howitworks />,
       route: Route,
     },
-    
     {
       path: '/invoice',
       name: 'invoice',
@@ -112,38 +107,23 @@ const PagesRoutes = () => {
       route: Route,
     },
     {
-      path: '/booking',
-      name: 'booking',
-      element: <BookingWizard />,
-      route: Route,
-    },
-    {
-      path: '/booking/booking-1',
-      name: 'booking-1 ',
-      element: <Booking1 />,
-      route: Route,
-    },
-    {
-      path: '/booking/booking-details',
-      name: 'booking-details',
-      element: <BookingDetails />,
-      route: Route,
-    },
-    {
       path: '/session-expired',
       name: 'SessionExpired',
       element: <SessionExpired />,
       route: Route,
     },
-
     {
       path: '/payment-setting',
       name: 'payment-setting',
       element: <PaymentSetting />,
       route: Route,
     },
-
-
+    {
+      path: '/booking/*',
+      name: 'booking',
+      element: <BookingRoutes />,
+      route: Route,
+    },
     {
       path: '*',
       name: 'NotFound',
@@ -155,11 +135,9 @@ const PagesRoutes = () => {
   return (
     <>
       <Routes>
-        <Route>
-          {all_pages_routes.map((route, idx) => (
-            <Route path={route.path} element={route.element} key={idx} />
-          ))}
-        </Route>
+        {all_pages_routes.map((route, idx) => (
+          <Route path={route.path} element={route.element} key={idx} />
+        ))}
       </Routes>
     </>
   );

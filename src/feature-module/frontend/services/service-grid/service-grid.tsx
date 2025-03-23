@@ -258,7 +258,7 @@ const ServiceGrid = () => {
       <div className="card p-0">
         <div className="card-body p-0">
           <div className="img-sec w-100 position-relative" style={{ height: '200px', overflow: 'hidden' }}>
-            <Link to={`${routes.serviceDetails1}?id=${service.id}`}>
+            <Link to={`${routes.serviceDetails}/${service.id}`}>
               {service.serviceImages?.[0]?.imageUrl ? (
                 <img
                   src={`${config.ASSETS_URL}${service.serviceImages[0].imageUrl}`}
@@ -301,7 +301,7 @@ const ServiceGrid = () => {
           </div>
           <div className="p-3">
             <h5 className="mb-2 text-truncate">
-              <Link to={`${routes.serviceDetails1}?id=${service.id}`}>
+              <Link to={`${routes.serviceDetails}/${service.id}`}>
                 {service.title}
               </Link>
             </h5>
@@ -323,7 +323,7 @@ const ServiceGrid = () => {
                 {service.priceType === 'HOURLY' && '/hr'}
               </h5>
               <Link
-                to={`${routes.booking}?serviceId=${service.id}`}
+                to={`${routes.bookingWizard}?serviceId=${service.id}`}
                 className="btn bg-primary-transparent"
               >
                 Book Now

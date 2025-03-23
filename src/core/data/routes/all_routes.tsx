@@ -30,8 +30,14 @@ export const all_routes = {
   serviceRequest: '/services/service-request',
   searchList: '/services/search-list',
   provider: '/services/providers/provider-list',
-  serviceDetails1: '/services/service-details/service-details1',
+  serviceDetails: '/services/service-details',
   serviceDetails2: '/services/service-details/service-details2',
+
+  // booking module path
+  booking: '/pages/booking/*',
+  bookingWizard: '/pages/booking/wizard',
+  bookingDetails: '/pages/booking/details',
+  bookingHistory: '/pages/booking/history',
 
   // customers module path
   customers: '/customers/*',
@@ -111,7 +117,6 @@ export const all_routes = {
   booking1: '/pages/booking/booking-1',
   bookings: '/pages/booking',
   booking2: '/customers/user-bookings',
-  bookingDetails: '/pages/booking/booking-details',
   invoice: '/pages/invoice',
   bookingDone: '/customers/booking-done',
   bookingPayment: '/customers/booking-payment',

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
+import { useParams, useSearchParams, Link } from 'react-router-dom';
 import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { serviceApi } from '../../../../core/service/serviceApi';
 import StickyBox from 'react-sticky-box';
@@ -41,8 +41,13 @@ interface ServiceData {
 }
 
 const ServiceDetails: React.FC = () => {
+  const { id: urlParamId } = useParams();
   const [searchParams] = useSearchParams();
-  const id = searchParams.get('id');
+  const queryParamId = searchParams.get('id');
+  
+  // Use URL parameter id first, fall back to query parameter id
+  const serviceId = urlParamId || queryParamId;
+  
   const [service, setService] = useState<ServiceData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -51,11 +56,11 @@ const ServiceDetails: React.FC = () => {
     const fetchServiceDetails = async () => {
       try {
         setLoading(true);
-        if (!id) {
+        if (!serviceId) {
           throw new Error('Service ID is required');
         }
 
-        const response = await serviceApi.getService(Number(id));
+        const response = await serviceApi.getService(Number(serviceId));
         
         if (response.success && response.data) {
           setService(response.data);
@@ -71,7 +76,7 @@ const ServiceDetails: React.FC = () => {
     };
 
     fetchServiceDetails();
-  }, [id]);
+  }, [serviceId]);
 
   if (loading) {
     return <div className="p-4">Loading...</div>;
@@ -210,7 +215,7 @@ const ServiceDetails: React.FC = () => {
                       </div>
 
                       <Link 
-                        to={all_routes.booking} 
+                        to={`${all_routes.bookingWizard}?serviceId=${service.id}`}
                         className="btn btn-primary w-100 d-flex align-items-center justify-content-center"
                       >
                         Book Service

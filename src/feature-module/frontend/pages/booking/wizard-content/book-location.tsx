@@ -4,7 +4,8 @@ import { Link } from 'react-router-dom'
 import ImageWithBasePath from '../../../../../core/img/ImageWithBasePath'
 interface props {
     handleNext: MouseEventHandler;
-    handlePrev?: MouseEventHandler
+    handlePrev?: MouseEventHandler;
+    serviceData?: any;
 }
 const BookLocation = ({handleNext}:props) => {
     const [selectedIndex, setSelectedIndex] = useState<number | null>(null);

@@ -1,0 +1,37 @@
+/* Fix DatePicker z-index issues */
+.react-datepicker-popper {
+  z-index: 1000 !important;
+}
+
+.datepicker-popper {
+  z-index: 1000 !important;
+}
+
+/* Ensure DatePicker appears above other elements */
+.react-datepicker-wrapper {
+  position: relative;
+  z-index: 5;
+}
+
+/* Fix calendar display */
+.react-datepicker {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+/* Make sure DatePicker renders above buttons and other elements */
+.react-datepicker-popper[data-placement^=bottom] {
+  margin-top: 8px;
+}
+
+/* Ensure calendar is fully visible */
+.react-datepicker__month-container {
+  background-color: white;
+}
+
+/* Add custom focus style for DatePicker input */
+.datetimepicker:focus {
+  box-shadow: 0 0 0 0.25rem rgba(255, 0, 128, 0.25);
+  border-color: #ff6cb2;
+}

@@ -20,6 +20,7 @@ interface Service {
     categoryId: string;
     price: string;
     priceType: 'HOURLY' | 'FIXED';
+    bookingType: 'DIRECT' | 'INQUIRY';
     address: string;
     city: string;
     state: string;
@@ -50,6 +51,7 @@ const EditService = () => {
         categoryId: '',
         price: '',
         priceType: 'HOURLY' as 'HOURLY' | 'FIXED',
+        bookingType: 'DIRECT' as 'DIRECT' | 'INQUIRY',
         address: '',
         city: '',
         state: '',
@@ -99,6 +101,7 @@ const EditService = () => {
                     categoryId: service.categoryId.toString(),
                     price: service.price.toString(),
                     priceType: service.priceType,
+                    bookingType: service.bookingType || 'DIRECT',
                     address: service.address || '',
                     city: service.city || '',
                     state: service.state || '',
@@ -373,6 +376,47 @@ return (
                                                         />
                                                         <span className="input-group-text">BGN</span>
                                                     </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="col-md-6">
+                                                <div className="mb-3">
+                                                    <label className="form-label">Booking Type <span className="text-danger">*</span></label>
+                                                    <div className="d-flex gap-3 mb-2">
+                                                        <div className="form-check">
+                                                            <input
+                                                                type="radio"
+                                                                className="form-check-input"
+                                                                id="bookingTypeDirect"
+                                                                name="bookingType"
+                                                                value="DIRECT"
+                                                                checked={formData.bookingType === 'DIRECT'}
+                                                                onChange={handleInputChange}
+                                                            />
+                                                            <label className="form-check-label" htmlFor="bookingTypeDirect">
+                                                                Direct Booking
+                                                            </label>
+                                                        </div>
+                                                        <div className="form-check">
+                                                            <input
+                                                                type="radio"
+                                                                className="form-check-input"
+                                                                id="bookingTypeInquiry"
+                                                                name="bookingType"
+                                                                value="INQUIRY"
+                                                                checked={formData.bookingType === 'INQUIRY'}
+                                                                onChange={handleInputChange}
+                                                            />
+                                                            <label className="form-check-label" htmlFor="bookingTypeInquiry">
+                                                                Inquiry Booking
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                    <small className="form-text text-muted">
+                                                        {formData.bookingType === 'DIRECT' ? 
+                                                            'Direct booking allows customers to book the service immediately.' : 
+                                                            'Inquiry booking allows customers to send requests with details for your approval.'}
+                                                    </small>
                                                 </div>
                                             </div>
 
