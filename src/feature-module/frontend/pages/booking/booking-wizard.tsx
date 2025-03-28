@@ -22,10 +22,6 @@ interface CustomerInfo {
   lastName: string;
   email: string;
   phone: string;
-  address: string;
-  city: string;
-  postalCode: string;
-  country: string;
   notes: string;
 }
 
@@ -42,8 +38,6 @@ interface DirectBookingData {
   timeSlot?: string;
   duration?: number;
   totalPrice?: number;
-  staffId?: number;
-  additionalServices?: any[];
 }
 
 const BookingWizard = () => {
@@ -66,8 +60,6 @@ const BookingWizard = () => {
     timeSlot: undefined,
     duration: undefined,
     totalPrice: undefined,
-    staffId: undefined,
-    additionalServices: []
   });
   const [bookingDate, setBookingDate] = useState<Date>(new Date());
   const [submitting, setSubmitting] = useState(false);
@@ -143,24 +135,6 @@ const BookingWizard = () => {
     handleNext();
   };
 
-  // Handle saving staff selection
-  const saveStaffSelection = (staffId: number) => {
-    setDirectBookingData({
-      ...directBookingData,
-      staffId
-    });
-    handleNext();
-  };
-
-  // Handle saving additional services
-  const saveAdditionalServices = (services: string[]) => {
-    setDirectBookingData({
-      ...directBookingData,
-      additionalServices: services
-    });
-    handleNext();
-  };
-
   // Submit booking data - updated to handle both booking types
   const submitBooking = async () => {
     if (!serviceId || !customerInfo) {
@@ -184,11 +158,9 @@ const BookingWizard = () => {
         bookingData.inquiryDetails = inquiryData;
       } else if (directBookingData) {
         // For direct bookings, add relevant data
-        bookingData.staffId = directBookingData.staffId;
         bookingData.timeSlot = directBookingData.timeSlot;
         bookingData.duration = directBookingData.duration;
         bookingData.totalPrice = directBookingData.totalPrice;
-        bookingData.additionalServices = directBookingData.additionalServices;
       }
       
       // Call API to create booking
@@ -258,7 +230,7 @@ const BookingWizard = () => {
 
   // Determine the steps based on booking type
   const isInquiryBooking = bookingType === 'INQUIRY';
-  const maxSteps = isInquiryBooking ? 4 : 8; // Fewer steps for inquiry booking
+  const maxSteps = isInquiryBooking ? 4 : 4; // Same number of steps for both flows now
 
   // Calculate progress percentage
   const progressPercentage = Math.round((currentStep / maxSteps) * 100);
@@ -312,7 +284,7 @@ const BookingWizard = () => {
           return null;
       }
     } else {
-      // Direct Booking Flow
+      // Simplified Direct Booking Flow
       switch (currentStep) {
         case 1:
           return (
@@ -323,29 +295,13 @@ const BookingWizard = () => {
           );
         case 2:
           return (
-            <BookStaff 
-              handleNext={saveStaffSelection} 
-              handlePrev={handlePrev} 
-              serviceData={serviceData}
-            />
-          );
-        case 3:
-          return (
-            <BookServices 
-              handleNext={saveAdditionalServices} 
-              handlePrev={handlePrev}
-              serviceData={serviceData}
-            />
-          );
-        case 4:
-          return (
             <BookDateTime 
               handleNext={saveDirectDateTime} 
               handlePrev={handlePrev}
               serviceData={serviceData}
             />
           );
-        case 5:
+        case 3:
           return (
             <BookInfo 
               handleNext={saveCustomerInfo}
@@ -353,21 +309,7 @@ const BookingWizard = () => {
               customerInfo={customerInfo || undefined}
             />
           );
-        case 6:
-          return (
-            <BookCart 
-              handleNext={handleNext} 
-              handlePrev={handlePrev}
-            />
-          );
-        case 7:
-          return (
-            <BookPayment 
-              handleNext={submitBooking} 
-              handlePrev={handlePrev}
-            />
-          );
-        case 8:
+        case 4:
           return (
             <BookConfirmation 
               setCurrentStep={setCurrentStep}
@@ -381,6 +323,45 @@ const BookingWizard = () => {
         default:
           return null;
       }
+    }
+  };
+
+  // Update the sidebar steps display
+  const renderSidebarSteps = () => {
+    if (isInquiryBooking) {
+      return (
+        <>
+          <li className={`${currentStep === 1 ? 'active' : currentStep > 1 ? 'activated' : ''} pb-3`}>
+            <span>1. Service Details</span>
+          </li>
+          <li className={`${currentStep === 2 ? 'active' : currentStep > 2 ? 'activated' : ''} pb-3`}>
+            <span>2. Inquiry Form</span>
+          </li>
+          <li className={`${currentStep === 3 ? 'active' : currentStep > 3 ? 'activated' : ''} pb-3`}>
+            <span>3. Personal Information</span>
+          </li>
+          <li className={`${currentStep === 4 ? 'active' : currentStep > 4 ? 'activated' : ''}`}>
+            <span>4. Confirmation</span>
+          </li>
+        </>
+      );
+    } else {
+      return (
+        <>
+          <li className={`${currentStep === 1 ? 'active' : currentStep > 1 ? 'activated' : ''} pb-3`}>
+            <span>1. Service Details</span>
+          </li>
+          <li className={`${currentStep === 2 ? 'active' : currentStep > 2 ? 'activated' : ''} pb-3`}>
+            <span>2. Date & Time</span>
+          </li>
+          <li className={`${currentStep === 3 ? 'active' : currentStep > 3 ? 'activated' : ''} pb-3`}>
+            <span>3. Personal Information</span>
+          </li>
+          <li className={`${currentStep === 4 ? 'active' : currentStep > 4 ? 'activated' : ''}`}>
+            <span>4. Confirmation</span>
+          </li>
+        </>
+      );
     }
   };
 
@@ -429,51 +410,7 @@ const BookingWizard = () => {
                               {isInquiryBooking ? 'Inquiry Booking' : 'Direct Booking'}
                             </h6>
                             <ul className="wizard-progress" id="bokingwizard">
-                              {isInquiryBooking ? (
-                                // Inquiry booking steps
-                                <>
-                                  <li className={`${currentStep === 1 ? 'active' : currentStep > 1 ? 'activated' : ''} pb-3`}>
-                                    <span>1. Service Details</span>
-                                  </li>
-                                  <li className={`${currentStep === 2 ? 'active' : currentStep > 2 ? 'activated' : ''} pb-3`}>
-                                    <span>2. Inquiry Form</span>
-                                  </li>
-                                  <li className={`${currentStep === 3 ? 'active' : currentStep > 3 ? 'activated' : ''} pb-3`}>
-                                    <span>3. Personal Information</span>
-                                  </li>
-                                  <li className={`${currentStep === 4 ? 'active' : currentStep > 4 ? 'activated' : ''}`}>
-                                    <span>4. Confirmation</span>
-                                  </li>
-                                </>
-                              ) : (
-                                // Direct booking steps
-                                <>
-                                  <li className={`${currentStep === 1 ? 'active' : currentStep > 1 ? 'activated' : ''} pb-3`}>
-                                    <span>1. Service Details</span>
-                                  </li>
-                                  <li className={`${currentStep === 2 ? 'active' : currentStep > 2 ? 'activated' : ''} pb-3`}>
-                                    <span>2. Staffs</span>
-                                  </li>
-                                  <li className={`${currentStep === 3 ? 'active' : currentStep > 3 ? 'activated' : ''} pb-3`}>
-                                    <span>3. Additional Services</span>
-                                  </li>
-                                  <li className={`${currentStep === 4 ? 'active' : currentStep > 4 ? 'activated' : ''} pb-3`}>
-                                    <span>4. Date & Time</span>
-                                  </li>
-                                  <li className={`${currentStep === 5 ? 'active' : currentStep > 5 ? 'activated' : ''} pb-3`}>
-                                    <span>5. Personal Information</span>
-                                  </li>
-                                  <li className={`${currentStep === 6 ? 'active' : currentStep > 6 ? 'activated' : ''} pb-3`}>
-                                    <span>6. Cart</span>
-                                  </li>
-                                  <li className={`${currentStep === 7 ? 'active' : currentStep > 7 ? 'activated' : ''} pb-3`}>
-                                    <span>7. Payment</span>
-                                  </li>
-                                  <li className={`${currentStep === 8 ? 'active' : currentStep > 8 ? 'activated' : ''}`}>
-                                    <span>8. Confirmation</span>
-                                  </li>
-                                </>
-                              )}
+                              {renderSidebarSteps()}
                             </ul>
                           </div>
                           <div className="status-report">

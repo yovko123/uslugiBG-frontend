@@ -1,7 +1,7 @@
 //uslugiBG-frontend\src\feature-module\frontend\pages\booking\wizard-content\book-info.tsx
 
 import React, { useState, useEffect } from 'react';
-import { FaUser, FaEnvelope, FaPhone, FaMapMarkerAlt, FaClipboardList } from 'react-icons/fa';
+import { FaUser, FaEnvelope, FaPhone, FaClipboardList } from 'react-icons/fa';
 import { useAuth } from '../../../../../core/contexts/AuthContext';
 
 interface FormData {
@@ -9,10 +9,6 @@ interface FormData {
   lastName: string;
   email: string;
   phone: string;
-  address: string;
-  city: string;
-  postalCode: string;
-  country: string;
   notes: string;
 }
 
@@ -31,10 +27,6 @@ const BookInfo: React.FC<BookInfoProps> = ({ handleNext, handlePrev, isInquiry =
     lastName: '',
     email: '',
     phone: '',
-    address: '',
-    city: '',
-    postalCode: '',
-    country: 'BG',
     notes: ''
   });
 
@@ -54,10 +46,7 @@ const BookInfo: React.FC<BookInfoProps> = ({ handleNext, handlePrev, isInquiry =
         lastName: user.lastName || '',
         email: user.email || '',
         phone: user.phone ? user.phone.replace(/^\+359/, '') : '', // Remove +359 prefix if present
-        address: user.address || '',
-        city: user.city || '',
-        postalCode: user.postalCode || '',
-        country: 'BG' // Default to Bulgaria
+        notes: ''
       }));
     }
   }, [user]);
@@ -72,17 +61,7 @@ const BookInfo: React.FC<BookInfoProps> = ({ handleNext, handlePrev, isInquiry =
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Validate form
-    const errors: Record<string, string> = {};
-    
-    // ... existing validation code ...
-    
-    // If there are no errors, proceed
-    if (Object.keys(errors).length === 0) {
-      handleNext(formData);
-    } else {
-      // ... existing error handling code ...
-    }
+    handleNext(formData);
   };
 
   return (
@@ -169,70 +148,6 @@ const BookInfo: React.FC<BookInfoProps> = ({ handleNext, handlePrev, isInquiry =
             </div>
           </div>
         </div>
-
-        {!isInquiry && (
-          <div className="card shadow-sm border-0 rounded-3 mb-4">
-            <div className="card-header bg-transparent border-0 pt-4 px-4">
-              <div className="d-flex align-items-center">
-                <FaMapMarkerAlt className="text-primary me-2" />
-                <h5 className="fw-bold mb-0">Address Information</h5>
-              </div>
-            </div>
-            <div className="card-body px-4 pb-4">
-              <div className="row g-3">
-                <div className="col-12">
-                  <label htmlFor="address" className="form-label">Street Address</label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    id="address"
-                    placeholder="Enter your street address"
-                    value={formData.address}
-                    onChange={handleChange}
-                  />
-                </div>
-                <div className="col-md-6">
-                  <label htmlFor="city" className="form-label">City</label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    id="city"
-                    placeholder="Enter your city"
-                    value={formData.city}
-                    onChange={handleChange}
-                  />
-                </div>
-                <div className="col-md-3">
-                  <label htmlFor="postalCode" className="form-label">Postal Code</label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    id="postalCode"
-                    placeholder="Enter postal code"
-                    value={formData.postalCode}
-                    onChange={handleChange}
-                  />
-                </div>
-                <div className="col-md-3">
-                  <label htmlFor="country" className="form-label">Country</label>
-                  <select 
-                    className="form-select" 
-                    id="country"
-                    value={formData.country}
-                    onChange={handleChange}
-                  >
-                    <option value="">Select country</option>
-                    <option value="BG">Bulgaria</option>
-                    <option value="UK">United Kingdom</option>
-                    <option value="US">United States</option>
-                    <option value="DE">Germany</option>
-                    <option value="FR">France</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
 
         {!isInquiry && (
           <div className="card shadow-sm border-0 rounded-3 mb-4">

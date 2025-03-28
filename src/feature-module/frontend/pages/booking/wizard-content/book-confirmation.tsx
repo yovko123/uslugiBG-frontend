@@ -2,19 +2,27 @@
 
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FaCalendarAlt, FaClock, FaMapMarkerAlt, FaUser, FaEnvelope, FaPhone, FaCheckCircle } from 'react-icons/fa';
+import { FaCalendarAlt, FaClock, FaMapMarkerAlt, FaUser, FaEnvelope, FaPhone, FaCheckCircle, FaComments } from 'react-icons/fa';
 import config from '../../../../../config/config';
 import { all_routes } from '../../../../../core/data/routes/all_routes';
 import { format } from 'date-fns';
 import { useAuth } from '../../../../../core/contexts/AuthContext';
 
+interface CustomerInfo {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  notes: string;
+}
+
 interface BookingConfirmationProps {
-  setCurrentStep?: (step: number) => void;
-  bookingType?: string;
-  bookingData?: any;
-  serviceData?: any;
-  customerInfo?: any;
-  handlePrev?: () => void;
+  setCurrentStep: (step: number) => void;
+  bookingType?: 'DIRECT' | 'INQUIRY';
+  bookingData: any;
+  serviceData: any;
+  customerInfo: CustomerInfo | null;
+  handlePrev: () => void;
 }
 
 const BookConfirmation: React.FC<BookingConfirmationProps> = ({
@@ -39,7 +47,7 @@ const BookConfirmation: React.FC<BookingConfirmationProps> = ({
     : format(new Date(), 'EEE, MMMM d, yyyy');
   
   // Get booking type text
-  const isInquiry = bookingType === 'INQUIRY' || bookingType === 'inquiry';
+  const isInquiry = bookingType === 'INQUIRY';
   const bookingTypeText = isInquiry ? 'Inquiry' : 'Direct Booking';
 
   // Format phone number to avoid double prefix
@@ -274,12 +282,10 @@ const BookConfirmation: React.FC<BookingConfirmationProps> = ({
                           </div>
                         </li>
                         <li className="d-flex align-items-center mb-3">
-                          <FaMapMarkerAlt className="text-primary me-3" />
+                          <FaComments className="text-primary me-3" />
                           <div>
-                            <p className="mb-0 fw-medium">Address</p>
-                            <p className="mb-0 text-muted">
-                              {customerInfo?.address}{customerInfo?.city ? `, ${customerInfo.city}` : ''}{customerInfo?.postalCode ? ` ${customerInfo.postalCode}` : ''}
-                            </p>
+                            <p className="mb-0 fw-medium">Notes</p>
+                            <p className="mb-0 text-muted">{customerInfo?.notes || 'No notes provided'}</p>
                           </div>
                         </li>
                       </ul>
